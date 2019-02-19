@@ -210,7 +210,8 @@ class Parser
         }
         return $this->getHeaders(
             $this->getCsvResourceHeaders($columns, $options),
-            $this->getAliasedHeaders($options)
+            $this->getAliasedHeaders($options),
+            $options
         );
     }
 
@@ -219,9 +220,10 @@ class Parser
      *
      * @param array $csvResourceHeaders
      * @param array $aliased
+     * @param array $options configuration options for parsing
      * @return array
      */
-    private function getHeaders(array $csvResourceHeaders, array $aliased) : array
+    private function getHeaders(array $csvResourceHeaders, array $aliased, array $options) : array
     {
         $headers = [];
         foreach ($csvResourceHeaders as $i => $csvResourceHeader) {
@@ -247,7 +249,7 @@ class Parser
      * Get headers from CSV resource
      *
      * @param array $columns the 1st line of the resource
-     * @param array $options
+     * @param array $options configuration options for parsing
      * @return array
      */
     private function getCsvResourceHeaders(array $columns, array $options) : array
@@ -261,7 +263,7 @@ class Parser
     /**
      * Get headers from columns configuration options
      *
-     * @param array $options
+     * @param array $options configuration options for parsing
      * @return array
      */
     private function getAliasedHeaders(array $options) : array
