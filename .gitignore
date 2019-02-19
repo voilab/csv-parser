@@ -1,0 +1,5 @@
+/.vagrant
+/build
+/vendor
+/vagrant-bootstrap.sh
+/Vagrantfile
