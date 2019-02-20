@@ -27,7 +27,9 @@ Create a composer.json file in your project root:
 $ composer require voilab/csv
 ```
 
-## Basic usage
+## Usage
+
+### Available methods
 
 ```php
 $parser = new \voilab\csv\Parser($defaultOptions = []);
@@ -41,21 +43,51 @@ $result = $parser->fromFile($file = 'file.csv', $options = []);
 $result = $parser->parse($resource, $options = []);
 ```
 
+### Simple example
+
+```php
+$parser = new \voilab\csv\Parser([
+    'delimiter' => ';',
+    'columns' => [
+        'A' => function (string $data) {
+            return (int) $data;
+        },
+        'B' => function (string $data) {
+            return get_object_from_db($data);
+        }
+    ]
+]);
+
+$csv = <<<CSV
+A;B
+4;hello
+2;world
+CSV;
+
+$result = $parser->fromString($csv);
+
+foreach ($result as $row) {
+    $row['B']->someMethod();
+    var_dump($row['A']); // int
+}
+```
+
 ### Full example
 
 ```php
 $parser->fromFile('file.csv', [
     // fgetcsv
-    'delimiter' => ';',
-    'enclosure' => '',
+    'delimiter' => ',',
+    'enclosure' => '"',
     'escape' => '\\',
     'length' => 0,
     // headers management
     'headers' => true,
     'strictHeaders' => true,
+    'ignoreMissingHeaders' => false,
     // big files
     'start' => 0,
-    'size' => 1000,
+    'size' => 0,
     // data pre-manipulation
     'autotrim' => true,
     'onBeforeColumnParse' => function (string $data) {
@@ -103,6 +135,7 @@ http://php.net/manual/fr/function.fgetcsv.php
 | length | `int` | `0` | `fgetcsv` the line length |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
 | strictHeaders | `bool` | `true` | The defined columns must match exactly the columns in the CSV resource |
+| ignoreMissingHeaders | `bool` | false | Skip CSV columns that aren't defined in [columns] option. Take over [strictHeaders] option. |
 | start | `int` | `0` | Line index to start with. Used in big files, in conjunction with [size] option. The first index of data is `0`, regardless of headers |
 | size | `int` | `0` | Number of lines to process. `0` ignores [start] and [size] |
 | autotrim | `bool` | `true` | Trim all cell content, so you have always trimmed data in you columns functions |
@@ -213,7 +246,7 @@ in the columns definitions. Otherwise, the parser will not find this column.
 $str = <<<CSV
 A;B;Just as I said
 4;hello;hey
-9;world;hi
+2;world;hi
 CSV;
 
 $parser = new \voilab\csv\Parser();
@@ -263,7 +296,7 @@ In the example below, the function `A()` is called before `B()`.
 $str = <<<CSV
 A;B
 4;hello
-9;world
+2;world
 CSV;
 
 $parser = new \voilab\csv\Parser();

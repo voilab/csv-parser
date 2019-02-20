@@ -22,6 +22,7 @@ class Parser
         // headers
         'headers' => true,
         'strictHeaders' => true,
+        'ignoreMissingHeaders' => false,
         // big files
         'size' => 0,
         'start' => 0,
@@ -169,17 +170,23 @@ class Parser
                     throw new Exception("At line [$index], columns don't match headers", Exception::DIFFCOLUMNS);
                 }
                 $colinfo = array_merge($colinfo, $columns[$i]);
-                $method = null;
-                if (isset($options['columns'][$colinfo['full']])) {
-                    $method = $options['columns'][$colinfo['full']];
+                if ($options['ignoreMissingHeaders'] && $colinfo['full'] === null) {
+                    continue;
                 }
+
                 $col = $options['autotrim'] ? trim($col) : $col;
                 if (is_callable($options['onBeforeColumnParse'])) {
                     $col = $options['onBeforeColumnParse']($col, $index, $colinfo, $options);
                 }
+
+                $method = isset($options['columns'][$colinfo['full']])
+                    ? $options['columns'][$colinfo['full']]
+                    : null;
+
                 $parsed[$colinfo['name']] = $method
                     ? $method($col, $index, $row, $parsed, $options)
                     : $col;
+
             } catch (\Exception $e) {
                 if (is_callable($options['onError'])) {
                     // user will decide what to do with the error
@@ -195,48 +202,27 @@ class Parser
     /**
      * Return the columns
      *
-     * @param resource $data CSV data string
+     * @param resource $data the CSV data resource
      * @param array $options configuration options for parsing
      * @return array the columns. If they are aliased, return the aliased ones
      */
     private function getColumns($data, array $options) : array
     {
-        $columns = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
-        if (!$options['headers']) {
-            rewind($data);
-        }
-        if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
-            throw new Exception("CSV data is empty", Exception::EMPTY);
-        }
-        return $this->getHeaders(
-            $this->getCsvResourceHeaders($columns, $options),
-            $this->getAliasedHeaders($options),
-            $options
-        );
-    }
+        $csvHeaders = $this->getCsvHeaders($data, $options);
+        $optionsHeaders = $this->getOptionsHeaders($options);
 
-    /**
-     * Get headers data, combining CSV resource with columns configurations
-     *
-     * @param array $csvResourceHeaders
-     * @param array $aliased
-     * @param array $options configuration options for parsing
-     * @return array
-     */
-    private function getHeaders(array $csvResourceHeaders, array $aliased, array $options) : array
-    {
         $headers = [];
-        foreach ($csvResourceHeaders as $i => $csvResourceHeader) {
-            if (isset($aliased[$csvResourceHeader])) {
-                $headers[$i] = $aliased[$csvResourceHeader];
+        foreach ($csvHeaders as $i => $csvHeader) {
+            if (isset($optionsHeaders[$csvHeader])) {
+                $headers[$i] = $optionsHeaders[$csvHeader];
             } else {
-                if ($options['strictHeaders']) {
-                    throw new Exception("Header [$csvResourceHeader] not found in column configuration", Exception::HEADERMISSING);
+                if ($options['strictHeaders'] && !$options['ignoreMissingHeaders']) {
+                    throw new Exception("Header [$csvHeader] not found in column configuration", Exception::HEADERMISSING);
                 }
                 // add header with a raw index, since it is not configured in
                 // the options array and we authorize it
                 $headers[$i] = [
-                    'name' => $csvResourceHeader,
+                    'name' => $csvHeader,
                     'csv' => $i,
                     'full' => null
                 ];
@@ -248,12 +234,19 @@ class Parser
     /**
      * Get headers from CSV resource
      *
-     * @param array $columns the 1st line of the resource
+     * @param resource $data the CSV data resource
      * @param array $options configuration options for parsing
      * @return array
      */
-    private function getCsvResourceHeaders(array $columns, array $options) : array
+    private function getCsvHeaders($data, array $options) : array
     {
+        $columns = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
+        if (!$options['headers']) {
+            rewind($data);
+        }
+        if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
+            throw new Exception("CSV data is empty", Exception::EMPTY);
+        }
         return array_map(
             'trim',
             $options['headers'] ? $columns : array_keys($columns)
@@ -266,7 +259,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array
      */
-    private function getAliasedHeaders(array $options) : array
+    private function getOptionsHeaders(array $options) : array
     {
         $aliased = [];
         foreach (array_keys($options['columns']) as $c) {
