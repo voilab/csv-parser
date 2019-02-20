@@ -18,7 +18,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "0.3.0#php5"
+        "voilab/csv": "dev-feature/php5"
     }
 }
 ```
