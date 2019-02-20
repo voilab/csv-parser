@@ -100,7 +100,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the processed data
      */
-    public function fromResource($data, array $options) : array
+    public function fromResource($data, array $options)
     {
         if (!is_resource($data)) {
             throw new Exception("CSV data must be a resource", Exception::NORESOURCE);
