@@ -18,7 +18,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^0.3.0"
+        "voilab/csv": "0.3.0#php5"
     }
 }
 ```
@@ -49,10 +49,10 @@ $result = $parser->fromResource($resource, $options = []);
 $parser = new \voilab\csv\Parser([
     'delimiter' => ';',
     'columns' => [
-        'A' => function (string $data) {
+        'A' => function ($data) {
             return (int) $data;
         },
-        'B' => function (string $data) {
+        'B' => function ($data) {
             return get_object_from_db($data);
         }
     ]
@@ -90,25 +90,25 @@ $parser->fromFile('file.csv', [
     'size' => 0,
     // data pre-manipulation
     'autotrim' => true,
-    'onBeforeColumnParse' => function (string $data) {
+    'onBeforeColumnParse' => function ($data) {
         return utf8_encode($data);
     },
     // data post-manipulation
     'onRowParsed' => function (array $row) {
         do_some_stuff($row);
     },
-    'onError' => function (\Exception $e, int $index) {
+    'onError' => function (\Exception $e, $index) {
         throw new \Exception($e->getMessage() . ": at line $index");
     }
     // CSV column definition
     'columns' => [
-        'A as id' => function (string $data) {
+        'A as id' => function ($data) {
             return (int) $data;
         },
-        'B as firstname' => function (string $data) {
+        'B as firstname' => function ($data) {
             return ucfirst($data);
         },
-        'C as name' => function (string $data) {
+        'C as name' => function ($data) {
             if (!$data) {
                 throw new \Exception("Name is mandatory and is missing");
             }
@@ -162,11 +162,11 @@ The function returns `?mixed` value.
 $parser->fromFile('file.csv', [
     'columns' => [
         // minimal usage
-        'col1' => function (string $data) {
+        'col1' => function ($data) {
             return $data;
         },
         // complete usage
-        'col2' => function (string $data, int $index, array $row, array $parsed, array $options) {
+        'col2' => function ($data, $index, array $row, array $parsed, array $options) {
             return $data;
         }
     ]
@@ -192,11 +192,11 @@ other functions if you want to return other types from here.
 ```php
 $parser->fromFile('file.csv', [
     // minimal usage
-    'onBeforeColumnParse' => function (string $data) {
+    'onBeforeColumnParse' => function ($data) {
         return utf8_encode($data);
     },
     // complete ussage
-    'onBeforeColumnParse' => function (string $data, int $index, array $colInfo, array $options) : string
+    'onBeforeColumnParse' => function ($data, $index, array $colInfo, array $options)
     {
         return utf8_encode($data);
     }
@@ -223,7 +223,7 @@ $parser->fromFile('file.csv', [
         return $rowData;
     }
     // complete usage
-    'onRowParsed' => function (array $rowData, int $index, array $parsed, array $options) : array
+    'onRowParsed' => function (array $rowData, $index, array $parsed, array $options)
     {
         return $rowData;
     }
@@ -254,13 +254,13 @@ $parser = new \voilab\csv\Parser();
 $result = $parser->fromString($str, [
     'delimiter' => ';',
     'columns' => [
-        'A as id' => function (string $data) {
+        'A as id' => function ($data) {
             return (int) $data;
         },
-        'B as content' => function (string $data) {
+        'B as content' => function ($data) {
             return ucfirst($data);
         },
-        'Just as I said as notes' => function (string $data) {
+        'Just as I said as notes' => function ($data) {
             return $data;
         }
     ]
@@ -304,11 +304,11 @@ $parser = new \voilab\csv\Parser();
 $result = $parser->fromString($str, [
     'delimiter' => ';',
     'columns' => [
-        'B' => function (string $data) {
+        'B' => function ($data) {
             // second call
             return ucfirst($data);
         },
-        'A' => function (string $data) {
+        'A' => function ($data) {
             // first call
             return (int) $data;
         }
@@ -353,12 +353,12 @@ be skipped for this row.
 ```php
 $errors = [];
 $data = $parser->fromFile('file.csv', [
-    'onError' => function (\Exception $e, int $index, array $info, array $options) use (&$errors) {
+    'onError' => function (\Exception $e, $index, array $info, array $options) use (&$errors) {
         $errors[] = "Line [$index]: " . $e->getMessage();
         // do nothing more, so next columns and next lines can be parsed too.
     },
     'columns' => [
-        'email' => function (string $data) {
+        'email' => function ($data) {
             // accept null email but validate it if there's one
             if ($data && !filter_var($data, FILTER_VALIDATE_EMAIL)) {
                 throw new \Exception("The email [$data] is invalid");

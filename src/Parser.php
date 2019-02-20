@@ -52,7 +52,7 @@ class Parser
      * @param bool $value set or unset auto detect line endings
      * @return self
      */
-    public function autoDetectLineEndings($value = true) : self
+    public function autoDetectLineEndings($value = true)
     {
         ini_set('auto_detect_line_endings', (bool) $value);
         return $this;
@@ -65,7 +65,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the processed data
      */
-    public function fromFile(string $file, array $options = []) : array
+    public function fromFile($file, array $options = [])
     {
         if (!file_exists($file)) {
             throw new Exception("File [$file] doesn't exist", Exception::NOFILE);
@@ -83,7 +83,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the processed data
      */
-    public function fromString(string $data, array $options = []) : array
+    public function fromString($data, array $options = [])
     {
         $stream = fopen('php://temp', 'r+');
         fwrite($stream, $data);
@@ -146,7 +146,7 @@ class Parser
             $i++;
         }
         if ($i === 0) {
-            throw new Exception("CSV data is empty", Exception::EMPTY);
+            throw new Exception("CSV data is empty", Exception::EMPTYCONTENT);
         }
         return $parsed;
     }
@@ -160,7 +160,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the processed row
      */
-    private function getRow(array $row, int $index, array $columns, array $options) : array
+    private function getRow(array $row, $index, array $columns, array $options)
     {
         $parsed = [];
         foreach ($row as $i => $col) {
@@ -206,7 +206,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the columns. If they are aliased, return the aliased ones
      */
-    private function getColumns($data, array $options) : array
+    private function getColumns($data, array $options)
     {
         $csvHeaders = $this->getCsvHeaders($data, $options);
         $optionsHeaders = $this->getOptionsHeaders($options);
@@ -238,14 +238,14 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array
      */
-    private function getCsvHeaders($data, array $options) : array
+    private function getCsvHeaders($data, array $options)
     {
         $columns = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
         if (!$options['headers']) {
             rewind($data);
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
-            throw new Exception("CSV data is empty", Exception::EMPTY);
+            throw new Exception("CSV data is empty", Exception::EMPTYCONTENT);
         }
         return array_map(
             'trim',
@@ -259,7 +259,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array
      */
-    private function getOptionsHeaders(array $options) : array
+    private function getOptionsHeaders(array $options)
     {
         $aliased = [];
         foreach (array_keys($options['columns']) as $c) {

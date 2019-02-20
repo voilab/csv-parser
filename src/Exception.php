@@ -7,7 +7,7 @@ class Exception extends \Exception
      * CSV resource is empty or has headers but no other data
      * @var int
      */
-    const EMPTY = 1;
+    const EMPTYCONTENT = 1;
 
     /**
      * Some headers in CSV resource aren't defined in [columns] option
