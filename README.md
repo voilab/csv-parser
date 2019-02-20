@@ -18,7 +18,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^0.1.0"
+        "voilab/csv": "^0.3.0"
     }
 }
 ```
@@ -40,7 +40,7 @@ $result = $parser->fromString($str = "A;B\n1;test", $options = []);
 $result = $parser->fromFile($file = 'file.csv', $options = []);
 
 // or with a raw resource (fopen, fsockopen, php://memory, etc)
-$result = $parser->parse($resource, $options = []);
+$result = $parser->fromResource($resource, $options = []);
 ```
 
 ### Simple example
@@ -135,7 +135,7 @@ http://php.net/manual/fr/function.fgetcsv.php
 | length | `int` | `0` | `fgetcsv` the line length |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
 | strictHeaders | `bool` | `true` | The defined columns must match exactly the columns in the CSV resource |
-| ignoreMissingHeaders | `bool` | false | Skip CSV columns that aren't defined in [columns] option. Take over [strictHeaders] option. |
+| ignoreMissingHeaders | `bool` | `false` | Skip CSV columns that aren't defined in [columns] option. Take over [strictHeaders] option. |
 | start | `int` | `0` | Line index to start with. Used in big files, in conjunction with [size] option. The first index of data is `0`, regardless of headers |
 | size | `int` | `0` | Number of lines to process. `0` ignores [start] and [size] |
 | autotrim | `bool` | `true` | Trim all cell content, so you have always trimmed data in you columns functions |
