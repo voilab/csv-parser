@@ -71,7 +71,7 @@ class Parser
             throw new Exception("File [$file] doesn't exist", Exception::NOFILE);
         }
         $resource = fopen($file, 'r');
-        $result = $this->parse($resource, $options);
+        $result = $this->fromResource($resource, $options);
         fclose($resource);
         return $result;
     }
@@ -88,7 +88,7 @@ class Parser
         $stream = fopen('php://temp', 'r+');
         fwrite($stream, $data);
         rewind($stream);
-        $result = $this->parse($stream, $options);
+        $result = $this->fromResource($stream, $options);
         fclose($stream);
         return $result;
     }
@@ -100,7 +100,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the processed data
      */
-    public function parse($data, array $options) : array
+    public function fromResource($data, array $options) : array
     {
         if (!is_resource($data)) {
             throw new Exception("CSV data must be a resource", Exception::NORESOURCE);
