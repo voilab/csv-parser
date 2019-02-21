@@ -132,7 +132,7 @@ class Parser
             try {
                 $rowData = $this->getRow($row, $index, $columns, $options);
                 if (is_callable($options['onRowParsed'])) {
-                    $options['onRowParsed']($rowData, $index, $parsed, $options);
+                    $rowData = $options['onRowParsed']($rowData, $index, $parsed, $options);
                 }
                 $parsed[] = $rowData;
             } catch (\Exception $e) {
