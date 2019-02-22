@@ -145,9 +145,6 @@ class Parser
             }
             $i++;
         }
-        if ($i === 0) {
-            throw new Exception("CSV data is empty", Exception::EMPTY);
-        }
         return $parsed;
     }
 
