@@ -27,6 +27,16 @@ Create a composer.json file in your project root:
 $ composer require voilab/csv
 ```
 
+### Install PHP5 compatible version
+
+``` json
+{
+    "require": {
+        "voilab/csv": "dev-feature/php5"
+    }
+}
+```
+
 ## Usage
 
 ### Available methods
@@ -95,7 +105,8 @@ $parser->fromFile('file.csv', [
     },
     // data post-manipulation
     'onRowParsed' => function (array $row) {
-        do_some_stuff($row);
+        $row['other_stuff'] = do_some_stuff($row);
+        return $row;
     },
     'onError' => function (\Exception $e, int $index) {
         throw new \Exception($e->getMessage() . ": at line $index");
@@ -156,7 +167,7 @@ When defining a function for a column, you have access to these parameters:
 | $parsed | `array` | The parsed data from previous columns (columns are handled one after the other) |
 | $options | `array` | The options array |
 
-The function returns `?mixed` value.
+> The function returns `?mixed` value.
 
 ```php
 $parser->fromFile('file.csv', [
@@ -186,8 +197,8 @@ manage encoding, for example.
 | $colInfo | `array` | The current column information |
 | $options | `array` | The options array |
 
-The function should return a `string`. Be aware of type declaration in your
-other functions if you want to return other types from here.
+> The function should return a `string`. Be aware of type declaration in your
+> other functions if you want to return other types from here.
 
 ```php
 $parser->fromFile('file.csv', [
@@ -214,7 +225,7 @@ When a row is completed, you can do something with all that data.
 | $parsed | `array` | The parsed data from previous rows (rows are handled one after the other) |
 | $options | `array` | The options array |
 
-The function returns an `array` of `?mixed` values.
+> The function returns an `array` of `?mixed` values.
 
 ```php
 $parser->fromFile('file.csv', [
@@ -238,8 +249,8 @@ to activate this functionality, like `CSV column name as alias`.
 Alias **must not** itself contain ` as ` string. But in the CSV resource, the
 header can have such a string.
 
-Note that if you have ` as ` in a CSV resource header, you **must** alias it
-in the columns definitions. Otherwise, the parser will not find this column.
+> Note that if you have ` as ` in a CSV resource header, you **must** alias it
+> in the columns definitions. Otherwise, the parser will not find this column.
 
 
 ```php
@@ -289,8 +300,8 @@ You can define your columns in any order you want. You don't need to provide
 them in the order they appear in the CSV. You just have to match your keys with
 a header in the CSV resource.
 
-Note that the execution order of the columns are aligned with the CSV resource.
-In the example below, the function `A()` is called before `B()`.
+> Note that the execution order of the columns are aligned with the CSV resource.
+> In the example below, the function `A()` is called before `B()`.
 
 ```php
 $str = <<<CSV
@@ -337,8 +348,8 @@ in line endings, you can use the method below to activate auto detect.
 
 `$parser->autoDetectLineEndings($value = true);`
 
-Note that auto detect is not reseted to initial value after the parsing has
-finished.
+> Note that auto detect is not reseted to initial value after the parsing has
+> finished.
 
 ### Error management
 
