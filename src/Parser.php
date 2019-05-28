@@ -22,7 +22,6 @@ class Parser
         // headers
         'headers' => true,
         'strictHeaders' => true,
-        'ignoreMissingHeaders' => false,
         // big files
         'size' => 0,
         'start' => 0,
@@ -160,16 +159,14 @@ class Parser
     private function getRow(array $row, int $index, array $columns, array $options) : array
     {
         $parsed = [];
-        foreach ($row as $i => $col) {
-            $colinfo = [ 'type' => 'column' ];
+        if ($options['strictHeaders'] && count($row) !== count($columns)) {
+            throw new Exception("At line [$index], columns don't match headers", Exception::DIFFCOLUMNS);
+        }
+        foreach ($columns as $colinfo) {
+            $colinfo['type'] = 'column';
+            $i = $colinfo['index'];
             try {
-                if (!isset($columns[$i])) {
-                    throw new Exception("At line [$index], columns don't match headers", Exception::DIFFCOLUMNS);
-                }
-                $colinfo = array_merge($colinfo, $columns[$i]);
-                if ($options['ignoreMissingHeaders'] && $colinfo['full'] === null) {
-                    continue;
-                }
+                $col = isset($row[$i]) && !$colinfo['phantom'] ? $row[$i] : '';
 
                 $col = $options['autotrim'] ? trim($col) : $col;
                 if (is_callable($options['onBeforeColumnParse'])) {
@@ -181,7 +178,7 @@ class Parser
                     : null;
 
                 $parsed[$colinfo['name']] = $method
-                    ? $method($col, $index, $row, $parsed, $options)
+                    ? $method($col, $index, $row, $parsed, $colinfo, $options)
                     : $col;
 
             } catch (\Exception $e) {
@@ -208,21 +205,22 @@ class Parser
         $csvHeaders = $this->getCsvHeaders($data, $options);
         $optionsHeaders = $this->getOptionsHeaders($options);
 
+        $max = max($csvHeaders)['index'];
         $headers = [];
-        foreach ($csvHeaders as $i => $csvHeader) {
-            if (isset($optionsHeaders[$csvHeader])) {
-                $headers[$i] = $optionsHeaders[$csvHeader];
+        foreach ($optionsHeaders as $key => $header) {
+            if ($options['strictHeaders'] && !isset($csvHeaders[$key])) {
+                throw new Exception("Header [$key] not found in CSV file", Exception::HEADERMISSING);
+            }
+            if (isset($csvHeaders[$key])) {
+                $header['index'] = $csvHeaders[$key]['index'];
+                $headers['_' . $header['index']] = $header;
             } else {
-                if ($options['strictHeaders'] && !$options['ignoreMissingHeaders']) {
-                    throw new Exception("Header [$csvHeader] not found in column configuration", Exception::HEADERMISSING);
-                }
-                // add header with a raw index, since it is not configured in
-                // the options array and we authorize it
-                $headers[$i] = [
-                    'name' => $csvHeader,
-                    'csv' => $i,
-                    'full' => null
-                ];
+                // fake an index for columns defined in options configuration
+                // that are not inside CSV file
+                $max += 1;
+                $header['index'] = $max;
+                $header['phantom'] = true;
+                $headers['_' . $max] = $header;
             }
         }
         return $headers;
@@ -244,10 +242,18 @@ class Parser
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
             throw new Exception("CSV data is empty", Exception::EMPTY);
         }
-        return array_map(
-            'trim',
-            $options['headers'] ? $columns : array_keys($columns)
-        );
+        $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
+        $headers = [];
+        foreach ($cols as $i => $h) {
+            if (isset($headers[$h])) {
+                throw new Exception("Header [$h] can't be the same for two columns", Exception::HEADEREXISTS);
+            }
+            $headers[$h] = [
+                'csv' => $h,
+                'index' => $i
+            ];
+        }
+        return $headers;
     }
 
     /**
@@ -261,12 +267,14 @@ class Parser
         $aliased = [];
         foreach (array_keys($options['columns']) as $c) {
             $tmp = explode(self::COLUMNALIAS, $c);
-            $tmpalias = array_pop($tmp);
-            $tmpcsv = count($tmp) ? implode(self::COLUMNALIAS, $tmp) : $tmpalias;
-            $aliased[$tmpcsv] = [
-                'name' => $tmpalias,
-                'csv' => $tmpcsv,
-                'full' => $c
+            $alias = array_pop($tmp);
+            $csv = count($tmp) ? implode(self::COLUMNALIAS, $tmp) : $alias;
+            $aliased[$csv] = [
+                'name' => $alias,
+                'csv' => $csv,
+                'full' => $c,
+                'phantom' => false,
+                'index' => null
             ];
         }
         return $aliased;
