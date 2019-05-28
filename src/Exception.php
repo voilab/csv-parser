@@ -10,10 +10,16 @@ class Exception extends \Exception
     const EMPTY = 1;
 
     /**
-     * Some headers in CSV resource aren't defined in [columns] option
+     * Some headers in [columns] option aren't defined in CSV resource
      * @var int
      */
     const HEADERMISSING = 2;
+
+    /**
+     * Some headers in CSV resource already appear once in the resource
+     * @var int
+     */
+    const HEADEREXISTS = 7;
 
     /**
      * No columns are configured in [columns] option
