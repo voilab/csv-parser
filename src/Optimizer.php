@@ -16,15 +16,23 @@ class Optimizer implements OptimizerInterface
     private $reduceFn;
 
     /**
+     * Function used to do something with values that are absent from reduce
+     * @var callable
+     */
+    private $absentFn;
+
+    /**
      * Constructor
      *
      * @param callable $parseFn Function used to parse data from CSV column
      * @param callable $reduceFn
+     * @param callable|null $absentFn
      */
-    public function __construct(callable $parseFn, callable $reduceFn)
+    public function __construct(callable $parseFn, callable $reduceFn, callable $absentFn = null)
     {
         $this->parseFn = $parseFn;
         $this->reduceFn = $reduceFn;
+        $this->absentFn = $absentFn;
     }
 
     /**
@@ -43,5 +51,14 @@ class Optimizer implements OptimizerInterface
     {
         $key = $this->reduceFn;
         return $key($data, $meta, $options);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function absent($value, array $meta, array $options)
+    {
+        $key = $this->absentFn;
+        return $key ? $key($value, $meta, $options) : $value;
     }
 }

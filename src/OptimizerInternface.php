@@ -6,7 +6,7 @@ interface OptimizerInterface
     /**
      * Take the value extracted from CSV resource. Can return any mixed value
      *
-     * @param string $value CSV cell content (trimmed if autotrim is set to true)
+     * @param mixed $value CSV cell content (after parsing)
      * @param int $index Line index. Correspond to the line number in the CSV resource (taken headers into account)
      * @param array $row Entire row data, raw from fgetcsv. These datas are not the result of the columns functions
      * @param array $parsed Parsed data from previous columns (columns are handled one after the other)
@@ -30,4 +30,15 @@ interface OptimizerInterface
      * @return array indexed array
      */
     public function reduce(array $data, array $meta, array $options);
+
+    /**
+     * Called when a value in CSV resource doesn't exist in the reduced data
+     * from the reduce function
+     *
+     * @param mixed $value CSV cell content (after parsing)
+     * @param array $meta column metadata
+     * @param array $options configuration options for parsing
+     * @return mixed
+     */
+    public function absent($value, array $meta, array $options);
 }

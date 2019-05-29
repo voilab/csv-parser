@@ -366,6 +366,9 @@ key `type` which can be `row` or `column`. If it's `column`, you can throw the
 error and it will call `onError` again, but with type `row`. Other columns will
 be skipped for this row.
 
+If you use an optimizer, you can call an Exception from there too. The key
+`type` will then have the value `optimizer`.
+
 ```php
 $errors = [];
 $data = $parser->fromFile('file.csv', [
@@ -390,6 +393,7 @@ if (count($errors)) {
     // everything went well, put data in db on whatever
 }
 ```
+
 ## Working with database, column optimization
 
 When parsing large set of data, if one column is, for example, a user ID, it's
@@ -397,7 +401,7 @@ a bad idea to call a `find($id)` method for each CSV row iteration. It's better
 to take all column values, and call for a `findByIds($ids)`.
 
 The build-in class `Optimizer` allows you to define a column this way. It takes
-two arguments. The first is the function needed to parse value from CSV column.
+three arguments. The first is the function needed to parse value from CSV.
 The second is a reduce function. It recieves all data of the column, and must
 return an indexed array.
 
@@ -420,9 +424,25 @@ Same as Column function (see above)
 
 > Returns an indexed array. If there's no correspondance between CSV column
 > values and the result of the reduce function, the column value will be set to
-> the initial value. For example, if values are [1, 2], they are used in
-> database query to find users by id, and user with ID 2 doesn't exist, the final
-> result will be Array( Array( colA => User (id=1) ), Array( colA => 2 ) )
+> the initial value. For example, if values are [10, 22], they are used in
+> database query to find users by id, and user with ID 22 doesn't exist, the
+> result will be `Array ( 10 => User(id=10), 22 => 22 )``
+
+#### Absent function
+
+When a value is not found in the reduced function, the default behaviour is to
+set the value (like there wasn't any reduce function for this row). You can
+override this by defining the absent function, and do what you want with the
+value.
+
+| Name | Type | Description |
+|------|------|-------------|
+| $value | `mixed` | The data parsed for the column |
+| $meta | `array` | The current column information |
+| $options | `array` | The options array |
+
+> If you have defined an error function, it will be called with a type of
+> `optimizer` (check error management above).
 
 ### Example
 
@@ -449,6 +469,10 @@ $data = $parser->fromResource($resource, [
                     $acc[$user->id] = $user;
                     return $acc;
                 }, []);
+            },
+            // data is [int] because the first function returns an [int]
+            function (int $data) {
+                throw new \Exception("User with id $data doesn't exist!");
             }
         ),
         'B as firstname' => function ($data) {

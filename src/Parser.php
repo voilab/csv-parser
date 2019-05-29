@@ -162,10 +162,12 @@ class Parser
     {
         $keys = array_keys($data[0]);
         $result = [];
+        $optimizers = [];
         foreach ($keys as $key) {
             $col = $columns['_' . array_search($key, array_column($columns, 'name', 'index'))];
             if ($options['columns'][$col['full']] instanceof OptimizerInterface) {
                 $columnData = array_column($data, $key);
+                $optimizers[$key] = $col;
                 $result[$key] = $options['columns'][$col['full']]->reduce($columnData, $col, $options);
             }
         }
@@ -176,7 +178,20 @@ class Parser
         foreach ($data as $i => $row) {
             foreach ($resultKeys as $key) {
                 $value = $data[$i][$key];
-                $data[$i][$key] = isset($result[$key][$value]) ? $result[$key][$value] : $value;
+                try {
+                    $data[$i][$key] = isset($result[$key][$value])
+                        ? $result[$key][$value]
+                        : $options['columns'][$optimizers[$key]['full']]->absent($value, $columns, $options);
+
+                } catch (\Exception $e) {
+                    if (is_callable($options['onError'])) {
+                        $info = [ 'type' => 'optimizer' ];
+                        $index = $i + ($options['headers'] ? 2 : 1);
+                        $options['onError']($e, $index, $optimizers[$key], $options);
+                    } else {
+                        throw $e;
+                    }
+                }
             }
         }
         return $data;
