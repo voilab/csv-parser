@@ -14,7 +14,7 @@ interface OptimizerInterface
      * @param array $options configuration options for parsing
      * @return ?mixed any mixed value
      */
-    public function parse($value, int $index, array $row, array $parsed, array $meta, array $options);
+    public function parse($value, $index, array $row, array $parsed, array $meta, array $options);
 
     /**
      * Take all parsed data from one column. Must return an array indexed by
@@ -29,5 +29,5 @@ interface OptimizerInterface
      * @param array $options configuration options for parsing
      * @return array indexed array
      */
-    public function reduce(array $data, array $meta, array $options) : array;
+    public function reduce(array $data, array $meta, array $options);
 }

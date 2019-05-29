@@ -29,7 +29,7 @@ final class BadFormatTest extends TestCase
 
     public function testEmpty() : void
     {
-        $this->expectExceptionCode(Exception::EMPTY);
+        $this->expectExceptionCode(Exception::EMPTYCONTENT);
         $result = $this->parser->fromFile($this->dir . 'csv-badformat-empty.csv');
     }
 

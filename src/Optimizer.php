@@ -30,7 +30,7 @@ class Optimizer implements OptimizerInterface
     /**
      * @inheritDoc
      */
-    public function parse($value, int $index, array $row, array $parsed, array $meta, array $options)
+    public function parse($value, $index, array $row, array $parsed, array $meta, array $options)
     {
         $key = $this->parseFn;
         return $key($value, $index, $row, $parsed, $meta, $options);
@@ -39,7 +39,7 @@ class Optimizer implements OptimizerInterface
     /**
      * @inheritDoc
      */
-    public function reduce(array $data, array $meta, array $options) : array
+    public function reduce(array $data, array $meta, array $options)
     {
         $key = $this->reduceFn;
         return $key($data, $meta, $options);
