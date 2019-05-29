@@ -158,7 +158,8 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the processed data
      */
-    private function postProcess(array $data, array $columns, array $options) {
+    private function postProcess(array $data, array $columns, array $options) : array
+    {
         $keys = array_keys($data[0]);
         $result = [];
         foreach ($keys as $key) {
@@ -175,7 +176,7 @@ class Parser
         foreach ($data as $i => $row) {
             foreach ($resultKeys as $key) {
                 $value = $data[$i][$key];
-                $data[$i][$key] = isset($result[$key][$value]) ? $result[$key][$value] : null;
+                $data[$i][$key] = isset($result[$key][$value]) ? $result[$key][$value] : $value;
             }
         }
         return $data;

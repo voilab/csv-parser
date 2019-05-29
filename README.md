@@ -404,16 +404,13 @@ return an indexed array.
 For example, if you have 2 rows with values `a` and `b`, the indexed result of
 the reduce function would be `Array ( a => something, b => something else )`.
 
-> If there's no correspondance between CSV column values and the result of the
-> reduce function, the column value will be set to [null]
-
 ### Documentation
 
 #### Parse function
 
 Same as Column function (see above)
 
-### Reduce function
+#### Reduce function
 
 | Name | Type | Description |
 |------|------|-------------|
@@ -421,7 +418,11 @@ Same as Column function (see above)
 | $meta | `array` | The current column information |
 | $options | `array` | The options array |
 
-> Returns an indexed array
+> Returns an indexed array. If there's no correspondance between CSV column
+> values and the result of the reduce function, the column value will be set to
+> the initial value. For example, if values are [1, 2], they are used in
+> database query to find users by id, and user with ID 2 doesn't exist, the final
+> result will be Array( Array( colA => User (id=1) ), Array( colA => 2 ) )
 
 ### Example
 
