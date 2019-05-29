@@ -27,6 +27,16 @@ Create a composer.json file in your project root:
 $ composer require voilab/csv
 ```
 
+### Install PHP5 compatible version
+
+``` json
+{
+    "require": {
+        "voilab/csv": "dev-feature/php5"
+    }
+}
+```
+
 ## Usage
 
 ### Available methods
@@ -37,7 +47,7 @@ $parser = new \voilab\csv\Parser($defaultOptions = []);
 $result = $parser->fromString($str = "A;B\n1;test", $options = []);
 
 // or
-$result = $parser->fromFile($file = 'file.csv', $options = []);
+$result = $parser->fromFile($file = '/path/file.csv', $options = []);
 
 // or with a raw resource (fopen, fsockopen, php://memory, etc)
 $result = $parser->fromResource($resource, $options = []);
@@ -53,15 +63,15 @@ $parser = new \voilab\csv\Parser([
             return (int) $data;
         },
         'B' => function ($data) {
-            return get_object_from_db($data);
+            return get_object_from_db_or_cache($data);
         }
     ]
 ]);
 
 $csv = <<<CSV
-A;B
-4;hello
-2;world
+A; B
+4; hello
+2; world
 CSV;
 
 $result = $parser->fromString($csv);
@@ -84,7 +94,6 @@ $parser->fromFile('file.csv', [
     // headers management
     'headers' => true,
     'strictHeaders' => true,
-    'ignoreMissingHeaders' => false,
     // big files
     'start' => 0,
     'size' => 0,
@@ -95,12 +104,13 @@ $parser->fromFile('file.csv', [
     },
     // data post-manipulation
     'onRowParsed' => function (array $row) {
-        do_some_stuff($row);
+        $row['other_stuff'] = do_some_stuff($row);
+        return $row;
     },
     'onError' => function (\Exception $e, $index) {
         throw new \Exception($e->getMessage() . ": at line $index");
     }
-    // CSV column definition
+    // CSV columns definition
     'columns' => [
         'A as id' => function ($data) {
             return (int) $data;
@@ -124,7 +134,7 @@ $parser->fromFile('file.csv', [
 
 These are the options you can provide at constructor level or when calling
 `from*` methods. Details for `fgetcsv` options can be found here:
-http://php.net/manual/fr/function.fgetcsv.php
+https://php.net/fgetcsv
 
 
 | Name | Type | Default | Description |
@@ -134,8 +144,7 @@ http://php.net/manual/fr/function.fgetcsv.php
 | escape | `string` | `\\` | `fgetcsv` the escape string |
 | length | `int` | `0` | `fgetcsv` the line length |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
-| strictHeaders | `bool` | `true` | The defined columns must match exactly the columns in the CSV resource |
-| ignoreMissingHeaders | `bool` | `false` | Skip CSV columns that aren't defined in [columns] option. Take over [strictHeaders] option. |
+| strictHeaders | `bool` | `true` | The columns in the CSV resource must match exactly [columns] option  |
 | start | `int` | `0` | Line index to start with. Used in big files, in conjunction with [size] option. The first index of data is `0`, regardless of headers |
 | size | `int` | `0` | Number of lines to process. `0` ignores [start] and [size] |
 | autotrim | `bool` | `true` | Trim all cell content, so you have always trimmed data in you columns functions |
@@ -154,9 +163,10 @@ When defining a function for a column, you have access to these parameters:
 | $index | `int` | The line index actually parsed. Correspond to the line number in the CSV resource (taken headers into account) |
 | $row | `array` | The entire row data, **raw from `fgetcsv`**. These datas **are not** the result of the columns functions |
 | $parsed | `array` | The parsed data from previous columns (columns are handled one after the other) |
+| $meta | `array` | The current column information |
 | $options | `array` | The options array |
 
-The function returns `?mixed` value.
+> The function returns `?mixed` value.
 
 ```php
 $parser->fromFile('file.csv', [
@@ -166,12 +176,17 @@ $parser->fromFile('file.csv', [
             return $data;
         },
         // complete usage
-        'col2' => function ($data, $index, array $row, array $parsed, array $options) {
+        'col2' => function ($data, $index, array $row, array $parsed, array $meta, array $options) {
             return $data;
         }
     ]
 ]);
 ```
+
+> If the column you defined in your code doesn't exist in CSV resource **and**
+> `strictHeaders` is set to `false`, the `$meta` argument will have a flag
+> `phantom` set to `true`. This is the way to know if the column exists or not
+> in the CSV resource during parsing.
 
 ### On before column parse function parameters
 
@@ -183,11 +198,11 @@ manage encoding, for example.
 |------|------|-------------|
 | $data | `string` | The first argument will always be a string. It is the cell content (trimmed if `autotrim` is set to true) |
 | $index | `int` | The line index actually parsed. Correspond to the line number in the CSV resource (taken headers into account) |
-| $colInfo | `array` | The current column information |
+| $meta | `array` | The current column information |
 | $options | `array` | The options array |
 
-The function should return a `string`. Be aware of type declaration in your
-other functions if you want to return other types from here.
+> The function should return a `string`. Be aware of type declaration in your
+> columns functions if you want to return other types from here.
 
 ```php
 $parser->fromFile('file.csv', [
@@ -196,7 +211,7 @@ $parser->fromFile('file.csv', [
         return utf8_encode($data);
     },
     // complete ussage
-    'onBeforeColumnParse' => function ($data, $index, array $colInfo, array $options)
+    'onBeforeColumnParse' => function ($data, $index, array $meta, array $options)
     {
         return utf8_encode($data);
     }
@@ -214,7 +229,7 @@ When a row is completed, you can do something with all that data.
 | $parsed | `array` | The parsed data from previous rows (rows are handled one after the other) |
 | $options | `array` | The options array |
 
-The function returns an `array` of `?mixed` values.
+> The function returns a multidimensional `array` of `?mixed` values.
 
 ```php
 $parser->fromFile('file.csv', [
@@ -238,15 +253,15 @@ to activate this functionality, like `CSV column name as alias`.
 Alias **must not** itself contain ` as ` string. But in the CSV resource, the
 header can have such a string.
 
-Note that if you have ` as ` in a CSV resource header, you **must** alias it
-in the columns definitions. Otherwise, the parser will not find this column.
+> Note that if you have ` as ` in a CSV resource header, you **must** alias it
+> in the columns definitions. Otherwise, the parser will not find this column.
 
 
 ```php
 $str = <<<CSV
-A;B;Just as I said
-4;hello;hey
-2;world;hi
+A; B    ; Just as I said
+4; hello; hey
+2; world; hi
 CSV;
 
 $parser = new \voilab\csv\Parser();
@@ -289,14 +304,15 @@ You can define your columns in any order you want. You don't need to provide
 them in the order they appear in the CSV. You just have to match your keys with
 a header in the CSV resource.
 
-Note that the execution order of the columns are aligned with the CSV resource.
-In the example below, the function `A()` is called before `B()`.
+> Note that the execution order of the columns are aligned with your code.
+> In the example below, the function `A()` is called after `B()`, even if
+> column A appears first in CSV resource.
 
 ```php
 $str = <<<CSV
-A;B
-4;hello
-2;world
+A; B
+4; hello
+2; world
 CSV;
 
 $parser = new \voilab\csv\Parser();
@@ -305,11 +321,11 @@ $result = $parser->fromString($str, [
     'delimiter' => ';',
     'columns' => [
         'B' => function ($data) {
-            // second call
+            // first call
             return ucfirst($data);
         },
         'A' => function ($data) {
-            // first call
+            // second call
             return (int) $data;
         }
     ]
@@ -319,12 +335,12 @@ print_r($result);
 /* prints:
 Array (
     [0] => Array (
-        [A] => 4
         [B] => Hello
+        [A] => 4
     )
     [1] => Array (
-        [A] => 9
         [B] => World
+        [A] => 9
     )
 )
 */
@@ -337,15 +353,15 @@ in line endings, you can use the method below to activate auto detect.
 
 `$parser->autoDetectLineEndings($value = true);`
 
-Note that auto detect is not reseted to initial value after the parsing has
-finished.
+> Note that auto detect is not reseted to initial value after the parsing has
+> finished.
 
 ### Error management
 
 You can use the `onError` option to collect all errors, so you can give a
 message to the user with all errors in the file you found, in one shot.
 
-You can stop the process of a row by checking the `$info` argument. It has a
+You can stop the process of a row by checking the `$meta` argument. It has a
 key `type` which can be `row` or `column`. If it's `column`, you can throw the
 error and it will call `onError` again, but with type `row`. Other columns will
 be skipped for this row.
@@ -353,7 +369,7 @@ be skipped for this row.
 ```php
 $errors = [];
 $data = $parser->fromFile('file.csv', [
-    'onError' => function (\Exception $e, $index, array $info, array $options) use (&$errors) {
+    'onError' => function (\Exception $e, $index, array $meta, array $options) use (&$errors) {
         $errors[] = "Line [$index]: " . $e->getMessage();
         // do nothing more, so next columns and next lines can be parsed too.
     },
@@ -373,6 +389,86 @@ if (count($errors)) {
 } else {
     // everything went well, put data in db on whatever
 }
+```
+## Working with database, column optimization
+
+When parsing large set of data, if one column is, for example, a user ID, it's
+a bad idea to call a `find($id)` method for each CSV row iteration. It's better
+to take all column values, and call for a `findByIds($ids)`.
+
+The build-in class `Optimizer` allows you to define a column this way. It takes
+two arguments. The first is the function needed to parse value from CSV column.
+The second is a reduce function. It recieves all data of the column, and must
+return an indexed array.
+
+For example, if you have 2 rows with values `a` and `b`, the indexed result of
+the reduce function would be `Array ( a => something, b => something else )`.
+
+> If there's no correspondance between CSV column values and the result of the
+> reduce function, the column value will be set to [null]
+
+### Documentation
+
+#### Parse function
+
+Same as Column function (see above)
+
+### Reduce function
+
+| Name | Type | Description |
+|------|------|-------------|
+| $data | `array` | All the data parsed, for the column |
+| $meta | `array` | The current column information |
+| $options | `array` | The options array |
+
+> Returns an indexed array
+
+### Example
+
+```php
+$str = <<<CSV
+A; B
+4; John
+2; Sybille
+CSV;
+
+$database = some_database_abstraction();
+
+$data = $parser->fromResource($resource, [
+    'delimiter' => ';',
+    'columns' => [
+        'A as user' => new \voilab\csv\Optimizer(
+            function ($data) {
+                return (int) $data;
+            },
+            function (array $data) use ($database) {
+                $query = 'SELECT * FROM user WHERE id IN(?)';
+                $users = $database->query($query, array_unique($data));
+                return array_reduce($users, function ($acc, $user) {
+                    $acc[$user->id] = $user;
+                    return $acc;
+                }, []);
+            }
+        ),
+        'B as firstname' => function ($data) {
+            return $data;
+        }
+    ]
+]);
+print_r($result);
+
+/* prints:
+Array (
+    [0] => Array (
+        [A] => User ( id => 4, firstname => Johnny )
+        [B] => John
+    )
+    [1] => Array (
+        [A] => User( id => 2, firstname => Sybilly )
+        [B] => Sybille
+    )
+)
+*/
 ```
 ## Testing
 ```

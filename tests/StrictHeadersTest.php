@@ -16,7 +16,7 @@ final class StrictHeadersTest extends TestCase
 
     public function testMissingHeader() : void
     {
-        $this->expectExceptionCode(Exception::HEADERMISSING);
+        $this->expectExceptionCode(Exception::DIFFCOLUMNS);
         $result = $this->parser->fromFile($this->file, [
             'columns' => [
                 'A' => function (string $data) {
@@ -41,7 +41,7 @@ final class StrictHeadersTest extends TestCase
         ]);
     }
 
-    public function testMissingHeaderAdded() : void
+    public function testMissingHeaderIgnore() : void
     {
         $result = $this->parser->fromFile($this->file, [
             'strictHeaders' => false,
@@ -52,8 +52,28 @@ final class StrictHeadersTest extends TestCase
             ]
         ]);
         $expect = [
-            [ 'A' => 4, 'B' => 'hello' ],
-            [ 'A' => 9, 'B' => 'world' ]
+            [ 'A' => 4 ],
+            [ 'A' => 9 ]
+        ];
+        $this->assertEquals($result, $expect);
+    }
+
+    public function testWrongHeaderIgnore() : void
+    {
+        $result = $this->parser->fromFile($this->file, [
+            'strictHeaders' => false,
+            'columns' => [
+                'C' => function (string $data) {
+                    return $data;
+                },
+                'A' => function (string $data) {
+                    return (int) $data;
+                }
+            ]
+        ]);
+        $expect = [
+            [ 'C' => '', 'A' => 4 ],
+            [ 'C' => '', 'A' => 9 ]
         ];
         $this->assertEquals($result, $expect);
     }
