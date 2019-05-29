@@ -1,6 +1,6 @@
 {
     "name": "voilab/csv",
-    "version": "0.4.0#php5",
+    "version": "0.4.2#php5",
     "type": "application",
     "description": "CSV parser that uses `fgetcsv` to parse a file or a string, extract columns and provide per-column method to manipulate data.",
     "keywords": [
