@@ -426,7 +426,7 @@ Same as Column function (see above)
 > values and the result of the reduce function, the column value will be set to
 > the initial value. For example, if values are [10, 22], they are used in
 > database query to find users by id, and user with ID 22 doesn't exist, the
-> result will be `Array ( 10 => User(id=10), 22 => 22 )``
+> result will be `Array ( 10 => User(id=10), 22 => 22 )`
 
 #### Absent function
 
@@ -438,6 +438,7 @@ value.
 | Name | Type | Description |
 |------|------|-------------|
 | $value | `mixed` | The data parsed for the column |
+| $index | `int` | The line index actually parsed. Correspond to the line number in the CSV resource (taken headers into account) |
 | $meta | `array` | The current column information |
 | $options | `array` | The options array |
 
