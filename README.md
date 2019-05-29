@@ -408,6 +408,9 @@ return an indexed array.
 For example, if you have 2 rows with values `a` and `b`, the indexed result of
 the reduce function would be `Array ( a => something, b => something else )`.
 
+The third argument is a function called when a value is not found in the reduced
+function.
+
 ### Documentation
 
 #### Parse function

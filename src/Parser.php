@@ -262,14 +262,14 @@ class Parser
         $headers = [];
         foreach ($optionsHeaders as $key => $header) {
             if ($options['strictHeaders'] && !isset($csvHeaders[$key])) {
-                throw new Exception("Header [$key] not found in CSV file", Exception::HEADERMISSING);
+                throw new Exception("Header [$key] not found in CSV resource", Exception::HEADERMISSING);
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key]['index'];
                 $headers['_' . $header['index']] = $header;
             } else {
                 // fake an index for columns defined in options configuration
-                // that are not inside CSV file
+                // that are not inside CSV resource
                 $max += 1;
                 $header['index'] = $max;
                 $header['phantom'] = true;
