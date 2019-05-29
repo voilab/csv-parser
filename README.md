@@ -471,7 +471,7 @@ $data = $parser->fromResource($resource, [
                 }, []);
             },
             // data is [int] because the first function returns an [int]
-            function (int $data, int $index) {
+            function ($data, $index) {
                 throw new \Exception("User with id $data at index $index doesn't exist!");
             }
         ),

@@ -56,7 +56,7 @@ class Optimizer implements OptimizerInterface
     /**
      * @inheritDoc
      */
-    public function absent($value, int $index, array $meta, array $options)
+    public function absent($value, $index, array $meta, array $options)
     {
         $key = $this->absentFn;
         return $key ? $key($value, $index, $meta, $options) : $value;

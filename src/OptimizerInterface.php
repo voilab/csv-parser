@@ -41,5 +41,5 @@ interface OptimizerInterface
      * @param array $options configuration options for parsing
      * @return mixed
      */
-    public function absent($value, int $index, array $meta, array $options);
+    public function absent($value, $index, array $meta, array $options);
 }
