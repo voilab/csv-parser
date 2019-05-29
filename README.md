@@ -390,6 +390,86 @@ if (count($errors)) {
     // everything went well, put data in db on whatever
 }
 ```
+## Working with database, column optimization
+
+When parsing large set of data, if one column is, for example, a user ID, it's
+a bad idea to call a `find($id)` method for each CSV row iteration. It's better
+to take all column values, and call for a `findByIds($ids)`.
+
+The build-in class `Optimizer` allows you to define a column this way. It takes
+two arguments. The first is the function needed to parse value from CSV column.
+The second is a reduce function. It recieves all data of the column, and must
+return an indexed array.
+
+For example, if you have 2 rows with values `a` and `b`, the indexed result of
+the reduce function would be `Array ( a => something, b => something else )`.
+
+> If there's no correspondance between CSV column values and the result of the
+> reduce function, the column value will be set to [null]
+
+### Documentation
+
+#### Parse function
+
+Same as Column function (see above)
+
+### Reduce function
+
+| Name | Type | Description |
+|------|------|-------------|
+| $data | `array` | All the data parsed, for the column |
+| $meta | `array` | The current column information |
+| $options | `array` | The options array |
+
+> Returns an indexed array
+
+### Example
+
+```php
+$str = <<<CSV
+A; B
+4; John
+2; Sybille
+CSV;
+
+$database = some_database_abstraction();
+
+$data = $parser->fromResource($resource, [
+    'delimiter' => ';',
+    'columns' => [
+        'A as user' => new \voilab\csv\Optimizer(
+            function (string $data) {
+                return (int) $data;
+            },
+            function (array $data) use ($database) {
+                $query = 'SELECT * FROM user WHERE id IN(?)';
+                $users = $database->query($query, array_unique($data));
+                return array_reduce($users, function ($acc, $user) {
+                    $acc[$user->id] = $user;
+                    return $acc;
+                }, []);
+            }
+        ),
+        'B as firstname' => function (string $data) {
+            return $data;
+        }
+    ]
+]);
+print_r($result);
+
+/* prints:
+Array (
+    [0] => Array (
+        [A] => User ( id => 4, firstname => Johnny )
+        [B] => John
+    )
+    [1] => Array (
+        [A] => User( id => 2, firstname => Sybilly )
+        [B] => Sybille
+    )
+)
+*/
+```
 ## Testing
 ```
 $ phpunit

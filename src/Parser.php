@@ -99,7 +99,7 @@ class Parser
      * @param array $options configuration options for parsing
      * @return array the processed data
      */
-    public function fromResource($data, array $options) : array
+    public function fromResource($data, array $options = []) : array
     {
         if (!is_resource($data)) {
             throw new Exception("CSV data must be a resource", Exception::NORESOURCE);
@@ -144,7 +144,41 @@ class Parser
             }
             $i++;
         }
-        return $parsed;
+        if (!count($parsed)) {
+            return $parsed;
+        }
+        return $this->postProcess($parsed, $columns, $options);
+    }
+
+    /**
+     * Add post process behaviour for columns if needed
+     *
+     * @param array $data the processed data
+     * @param array $columns columns metadata
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    private function postProcess(array $data, array $columns, array $options) {
+        $keys = array_keys($data[0]);
+        $result = [];
+        foreach ($keys as $key) {
+            $col = $columns['_' . array_search($key, array_column($columns, 'name', 'index'))];
+            if ($options['columns'][$col['full']] instanceof OptimizerInterface) {
+                $columnData = array_column($data, $key);
+                $result[$key] = $options['columns'][$col['full']]->reduce($columnData, $col, $options);
+            }
+        }
+        if (!count($result)) {
+            return $data;
+        }
+        $resultKeys = array_keys($result);
+        foreach ($data as $i => $row) {
+            foreach ($resultKeys as $key) {
+                $value = $data[$i][$key];
+                $data[$i][$key] = isset($result[$key][$value]) ? $result[$key][$value] : null;
+            }
+        }
+        return $data;
     }
 
     /**
@@ -177,6 +211,9 @@ class Parser
                     ? $options['columns'][$colinfo['full']]
                     : null;
 
+                if ($method instanceof OptimizerInterface) {
+                    $method = [$method, 'parse'];
+                }
                 $parsed[$colinfo['name']] = $method
                     ? $method($col, $index, $row, $parsed, $colinfo, $options)
                     : $col;
