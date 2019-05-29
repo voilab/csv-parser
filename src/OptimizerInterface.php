@@ -36,9 +36,10 @@ interface OptimizerInterface
      * from the reduce function
      *
      * @param mixed $value CSV cell content (after parsing)
+     * @param int $index Line index. Correspond to the line number in the CSV resource (taken headers into account)
      * @param array $meta column metadata
      * @param array $options configuration options for parsing
      * @return mixed
      */
-    public function absent($value, array $meta, array $options);
+    public function absent($value, int $index, array $meta, array $options);
 }
