@@ -66,4 +66,25 @@ final class OptimizerTest extends TestCase
         ];
         $this->assertEquals($result, $expect);
     }
+
+    public function testOptimizerThrow() : void
+    {
+        $this->expectExceptionMessage('data 4 not found');
+        $result = $this->parser->fromFile($this->file, [
+            'strictHeaders' => false,
+            'columns' => [
+                'A' => new \voilab\csv\Optimizer(
+                    function (string $data) {
+                        return (int) $data;
+                    },
+                    function (array $data) {
+                        return [];
+                    },
+                    function (int $data) {
+                        throw new \Exception("data $data not found");
+                    }
+                )
+            ]
+        ]);
+    }
 }
