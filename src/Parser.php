@@ -176,7 +176,7 @@ class Parser
         foreach ($data as $i => $row) {
             foreach ($resultKeys as $key) {
                 $value = $data[$i][$key];
-                $data[$i][$key] = isset($result[$key][$value]) ? $result[$key][$value] : null;
+                $data[$i][$key] = isset($result[$key][$value]) ? $result[$key][$value] : $value;
             }
         }
         return $data;

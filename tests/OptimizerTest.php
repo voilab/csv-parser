@@ -40,4 +40,30 @@ final class OptimizerTest extends TestCase
         ];
         $this->assertEquals($result, $expect);
     }
+
+    public function testOptimizerMissing() : void
+    {
+        $result = $this->parser->fromFile($this->file, [
+            'strictHeaders' => false,
+            'columns' => [
+                'A' => new \voilab\csv\Optimizer(
+                    function (string $data) {
+                        return (int) $data;
+                    },
+                    function (array $data) {
+                        return [];
+                    }
+                ),
+                'B' => function (string $data) {
+                    return $data;
+                }
+            ]
+        ]);
+        $expect = [
+            [ 'A' => 4, 'B' => 'hello' ],
+            [ 'A' => 9, 'B' => 'world' ],
+            [ 'A' => 4, 'B' => 'an other' ]
+        ];
+        $this->assertEquals($result, $expect);
+    }
 }
