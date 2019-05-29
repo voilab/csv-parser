@@ -176,17 +176,17 @@ class Parser
         }
         $resultKeys = array_keys($result);
         foreach ($data as $i => $row) {
+            $index = $i + ($options['headers'] ? 2 : 1);
             foreach ($resultKeys as $key) {
                 $value = $data[$i][$key];
                 try {
                     $data[$i][$key] = isset($result[$key][$value])
                         ? $result[$key][$value]
-                        : $options['columns'][$optimizers[$key]['full']]->absent($value, $columns, $options);
+                        : $options['columns'][$optimizers[$key]['full']]->absent($value, $index, $columns, $options);
 
                 } catch (\Exception $e) {
                     if (is_callable($options['onError'])) {
                         $info = [ 'type' => 'optimizer' ];
-                        $index = $i + ($options['headers'] ? 2 : 1);
                         $options['onError']($e, $index, $optimizers[$key], $options);
                     } else {
                         throw $e;
