@@ -10,5 +10,5 @@ interface I18nInterface {
      * @param string $key a constant name from Exception
      * @return string the translated string
      */
-    public function t(string $key) : string;
+    public function t($key);
 }

@@ -32,7 +32,7 @@ class I18n implements I18nInterface {
     /**
      * @inheritDoc
      */
-    public function t(string $key) : string
+    public function t($key)
     {
         return isset($this->text[$key]) ? $this->text[$key] : $key;
     }
