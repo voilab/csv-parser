@@ -18,7 +18,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^0.4.0"
+        "voilab/csv": "^0.5.0"
     }
 }
 ```
