@@ -9,7 +9,8 @@ final class StrictHeadersTest extends TestCase
     {
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
-            'strictHeaders' => true
+            'strictHeaders' => true,
+            'strictDefinedHeaders' => false
         ]);
         $this->file = __DIR__ . '/fixtures/csv-strict-headers.csv';
     }

@@ -23,20 +23,6 @@ Create a composer.json file in your project root:
 }
 ```
 
-``` bash
-$ composer require voilab/csv
-```
-
-### Install PHP5 compatible version
-
-``` json
-{
-    "require": {
-        "voilab/csv": "dev-feature/php5"
-    }
-}
-```
-
 ## Usage
 
 ### Available methods
@@ -63,7 +49,7 @@ $parser = new \voilab\csv\Parser([
             return (int) $data;
         },
         'B' => function ($data) {
-            return get_object_from_db_or_cache($data);
+            return ucfirst($data);
         }
     ]
 ]);
@@ -77,8 +63,8 @@ CSV;
 $result = $parser->fromString($csv);
 
 foreach ($result as $row) {
-    $row['B']->someMethod();
     var_dump($row['A']); // int
+    var_dump($row['B']); // string with first capital letter
 }
 ```
 
@@ -94,6 +80,7 @@ $parser->fromFile('file.csv', [
     // headers management
     'headers' => true,
     'strictHeaders' => true,
+    'strictDefinedHeaders' => true,
     // big files
     'start' => 0,
     'size' => 0,
@@ -144,7 +131,8 @@ https://php.net/fgetcsv
 | escape | `string` | `\\` | `fgetcsv` the escape string |
 | length | `int` | `0` | `fgetcsv` the line length |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
-| strictHeaders | `bool` | `true` | The columns in the CSV resource must match exactly [columns] option  |
+| strictHeaders | `bool` | `true` | Columns defined in [columns] option must match exactly the columns in CSV resource |
+| strictDefinedHeaders | `bool` | `true` | Columns defined in [columns] options must all be present in CSV resource, but CSV can contains other columns |
 | start | `int` | `0` | Line index to start with. Used in big files, in conjunction with [size] option. The first index of data is `0`, regardless of headers |
 | size | `int` | `0` | Number of lines to process. `0` ignores [start] and [size] |
 | autotrim | `bool` | `true` | Trim all cell content, so you have always trimmed data in you columns functions |
@@ -408,6 +396,9 @@ return an indexed array.
 For example, if you have 2 rows with values `a` and `b`, the indexed result of
 the reduce function would be `Array ( a => something, b => something else )`.
 
+The third argument is a function called when a value is not found in the reduced
+function.
+
 ### Documentation
 
 #### Parse function
@@ -430,7 +421,7 @@ Same as Column function (see above)
 
 #### Absent function
 
-When a value is not found in the reduced function, the default behaviour is to
+When a value is not found in the reduced result, the default behaviour is to
 set the value (like there wasn't any reduce function for this row). You can
 override this by defining the absent function, and do what you want with the
 value.
@@ -443,7 +434,7 @@ value.
 | $options | `array` | The options array |
 
 > If you have defined an error function, it will be called with a type of
-> `optimizer` (check error management above).
+> `optimizer` (check error management above) if you throw an error from here.
 
 ### Example
 
@@ -490,7 +481,7 @@ Array (
         [B] => John
     )
     [1] => Array (
-        [A] => User( id => 2, firstname => Sybilly )
+        [A] => User ( id => 2, firstname => Sybilly )
         [B] => Sybille
     )
 )
@@ -498,7 +489,7 @@ Array (
 ```
 ## Testing
 ```
-$ phpunit
+$ /vendor/bin/phpunit
 ```
 ## Security
 

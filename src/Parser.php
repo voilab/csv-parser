@@ -22,6 +22,7 @@ class Parser
         // headers
         'headers' => true,
         'strictHeaders' => true,
+        'strictDefinedHeaders' => true,
         // big files
         'size' => 0,
         'start' => 0,
@@ -51,7 +52,7 @@ class Parser
      * @param bool $value set or unset auto detect line endings
      * @return self
      */
-    public function autoDetectLineEndings($value = true)
+    public function autoDetectLineEndings($value)
     {
         ini_set('auto_detect_line_endings', (bool) $value);
         return $this;
@@ -162,13 +163,13 @@ class Parser
     {
         $keys = array_keys($data[0]);
         $result = [];
-        $optimizers = [];
+        $metas = [];
         foreach ($keys as $key) {
-            $col = $columns['_' . array_search($key, array_column($columns, 'name', 'index'))];
-            if ($options['columns'][$col['full']] instanceof OptimizerInterface) {
+            $meta = $columns['_' . array_search($key, array_column($columns, 'name', 'index'))];
+            if ($options['columns'][$meta['full']] instanceof OptimizerInterface) {
                 $columnData = array_column($data, $key);
-                $optimizers[$key] = $col;
-                $result[$key] = $options['columns'][$col['full']]->reduce($columnData, $col, $options);
+                $metas[$key] = $meta;
+                $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $meta, $options);
             }
         }
         if (!count($result)) {
@@ -179,15 +180,16 @@ class Parser
             $index = $i + ($options['headers'] ? 2 : 1);
             foreach ($resultKeys as $key) {
                 $value = $data[$i][$key];
+                $meta = $metas[$key];
+                $meta['type'] = 'optimizer';
                 try {
                     $data[$i][$key] = isset($result[$key][$value])
                         ? $result[$key][$value]
-                        : $options['columns'][$optimizers[$key]['full']]->absent($value, $index, $columns, $options);
+                        : $options['columns'][$meta['full']]->absent($value, $index, $meta, $options);
 
                 } catch (\Exception $e) {
                     if (is_callable($options['onError'])) {
-                        $info = [ 'type' => 'optimizer' ];
-                        $options['onError']($e, $index, $optimizers[$key], $options);
+                        $options['onError']($e, $index, $meta, $options);
                     } else {
                         throw $e;
                     }
@@ -212,32 +214,32 @@ class Parser
         if ($options['strictHeaders'] && count($row) !== count($columns)) {
             throw new Exception("At line [$index], columns don't match headers", Exception::DIFFCOLUMNS);
         }
-        foreach ($columns as $colinfo) {
-            $colinfo['type'] = 'column';
-            $i = $colinfo['index'];
+        foreach ($columns as $meta) {
+            $meta['type'] = 'column';
+            $i = $meta['index'];
             try {
-                $col = isset($row[$i]) && !$colinfo['phantom'] ? $row[$i] : '';
+                $col = isset($row[$i]) && !$meta['phantom'] ? $row[$i] : '';
 
-                $col = $options['autotrim'] ? trim($col) : $col;
+                $col = $options['autotrim'] ? trim($col) : (string) $col;
                 if (is_callable($options['onBeforeColumnParse'])) {
-                    $col = $options['onBeforeColumnParse']($col, $index, $colinfo, $options);
+                    $col = $options['onBeforeColumnParse']($col, $index, $meta, $options);
                 }
 
-                $method = isset($options['columns'][$colinfo['full']])
-                    ? $options['columns'][$colinfo['full']]
+                $method = isset($options['columns'][$meta['full']])
+                    ? $options['columns'][$meta['full']]
                     : null;
 
                 if ($method instanceof OptimizerInterface) {
                     $method = [$method, 'parse'];
                 }
-                $parsed[$colinfo['name']] = $method
-                    ? $method($col, $index, $row, $parsed, $colinfo, $options)
+                $parsed[$meta['name']] = $method
+                    ? $method($col, $index, $row, $parsed, $meta, $options)
                     : $col;
 
             } catch (\Exception $e) {
                 if (is_callable($options['onError'])) {
                     // user will decide what to do with the error
-                    $options['onError']($e, $index, $colinfo, $options);
+                    $options['onError']($e, $index, $meta, $options);
                 } else {
                     throw $e;
                 }
@@ -261,15 +263,15 @@ class Parser
         $max = max($csvHeaders)['index'];
         $headers = [];
         foreach ($optionsHeaders as $key => $header) {
-            if ($options['strictHeaders'] && !isset($csvHeaders[$key])) {
-                throw new Exception("Header [$key] not found in CSV file", Exception::HEADERMISSING);
+            if (($options['strictHeaders'] || $options['strictDefinedHeaders']) && !isset($csvHeaders[$key])) {
+                throw new Exception("Header [$key] not found in CSV resource", Exception::HEADERMISSING);
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key]['index'];
                 $headers['_' . $header['index']] = $header;
             } else {
                 // fake an index for columns defined in options configuration
-                // that are not inside CSV file
+                // that are not inside CSV resource
                 $max += 1;
                 $header['index'] = $max;
                 $header['phantom'] = true;
