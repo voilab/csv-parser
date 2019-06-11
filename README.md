@@ -124,7 +124,16 @@ $parser->fromFile('file.csv', [
                 throw new \Exception("Name is mandatory and is missing");
             }
             return ucfirst($data);
-        }
+        },
+        // use of Optimizers (see at the end of this doc for more info)
+        'D as optimized' => new \voilab\csv\Optimizer(
+            function (string $data) {
+                return (int) $data;
+            },
+            function (array $data) {
+                return some_reduce_function($data);
+            }
+        )
     ]
 ]);
 ```
@@ -176,13 +185,20 @@ $parser->fromFile('file.csv', [
         // minimal usage
         'col1' => function (string $data) {
             return $data;
-        },
-        // complete usage
-        'col2' => function (string $data, int $index, array $row, array $parsed, array $meta, array $options) {
-            return $data;
         }
     ]
 ]);
+```
+
+Note that headers are automatically trimmed and their carriage returns are
+removed. Also, all spaces following a space are removed. This is only for the
+headers. Cells content are not manipulated, except if `autotrim` is true.
+
+```
+" a header "     => "a header"
+"a       header" => "a header"
+"a  
+header  "        => "a header"
 ```
 
 > If the column you defined in your code doesn't exist in CSV resource **and**
@@ -211,11 +227,6 @@ $parser->fromFile('file.csv', [
     // minimal usage
     'onBeforeColumnParse' => function (string $data) : string {
         return utf8_encode($data);
-    },
-    // complete ussage
-    'onBeforeColumnParse' => function (string $data, int $index, array $meta, array $options) : string
-    {
-        return utf8_encode($data);
     }
 ]);
 ```
@@ -237,11 +248,6 @@ When a row is completed, you can do something with all that data.
 $parser->fromFile('file.csv', [
     // minmal usage
     'onRowParsed' => function (array $rowData) {
-        return $rowData;
-    }
-    // complete usage
-    'onRowParsed' => function (array $rowData, int $index, array $parsed, array $options) : array
-    {
         return $rowData;
     }
 ]);
@@ -461,7 +467,7 @@ CSV;
 
 $database = some_database_abstraction();
 
-$data = $parser->fromResource($resource, [
+$data = $parser->fromString($str, [
     'delimiter' => ';',
     'columns' => [
         'A as user' => new \voilab\csv\Optimizer(

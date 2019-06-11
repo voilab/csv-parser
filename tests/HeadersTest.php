@@ -9,6 +9,7 @@ final class NoHeaderTest extends TestCase
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';'
         ]);
+        $this->dir = __DIR__ . '/fixtures';
         $this->file = __DIR__ . '/fixtures/csv-no-header.csv';
     }
 
@@ -41,6 +42,27 @@ final class NoHeaderTest extends TestCase
                     return (int) $data;
                 },
                 '1 as content' => function (string $data) {
+                    return $data;
+                }
+            ]
+        ]);
+        $expect = [
+            [ 'id' => 4, 'content' => 'hello' ],
+            [ 'id' => 9, 'content' => 'world' ]
+        ];
+        $this->assertEquals($result, $expect);
+    }
+
+    public function testCarriageReturnHeaders() : void
+    {
+        $result = $this->parser->fromFile($this->dir . '/csv-carriagereturn-headers.csv', [
+            'delimiter' => ',',
+            'enclosure' => '"',
+            'columns' => [
+                'header with carriage return as id' => function (string $data) {
+                    return (int) $data;
+                },
+                'other test as content' => function (string $data) {
                     return $data;
                 }
             ]
