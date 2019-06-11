@@ -11,7 +11,7 @@ class Parser
 
     /**
      * Error texts translation
-     * @var I18n
+     * @var I18nInterface
      */
     private $i18n;
 
@@ -39,7 +39,8 @@ class Parser
         'onRowParsed' => null,
         'onError' => null,
         // column definition
-        'columns' => []
+        'columns' => [],
+        'debug' => false
     ];
 
     /**
@@ -173,7 +174,7 @@ class Parser
         $result = [];
         $metas = [];
         foreach ($keys as $key) {
-            $meta = $columns['_' . array_search($key, array_column($columns, 'name', 'index'))];
+            $meta = $columns[array_search($key, array_column($columns, 'name', 'index'))];
             if ($options['columns'][$meta['full']] instanceof OptimizerInterface) {
                 $columnData = array_column($data, $key);
                 $metas[$key] = $meta;
@@ -276,14 +277,14 @@ class Parser
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key]['index'];
-                $headers['_' . $header['index']] = $header;
+                $headers[$header['index']] = $header;
             } else {
                 // fake an index for columns defined in options configuration
                 // that are not inside CSV resource
                 $max += 1;
                 $header['index'] = $max;
                 $header['phantom'] = true;
-                $headers['_' . $max] = $header;
+                $headers[$max] = $header;
             }
         }
         return $headers;
@@ -308,6 +309,8 @@ class Parser
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
         $headers = [];
         foreach ($cols as $i => $h) {
+            // remove carriage returns and surnumeral spaces
+            $h = preg_replace('/\s\s+/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $h));
             if (isset($headers[$h])) {
                 throw new Exception(sprintf($this->i18n->t('HEADEREXISTS'), $h), Exception::HEADEREXISTS);
             }
