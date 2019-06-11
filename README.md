@@ -110,7 +110,16 @@ $parser->fromFile('file.csv', [
                 throw new \Exception("Name is mandatory and is missing");
             }
             return ucfirst($data);
-        }
+        },
+        // use of Optimizers (see at the end of this doc for more info)
+        'D as optimized' => new \voilab\csv\Optimizer(
+            function (string $data) {
+                return (int) $data;
+            },
+            function (array $data) {
+                return some_reduce_function($data);
+            }
+        )
     ]
 ]);
 ```
@@ -169,6 +178,17 @@ $parser->fromFile('file.csv', [
         }
     ]
 ]);
+```
+
+Note that headers are automatically trimmed and their carriage returns are
+removed. Also, all spaces following a space are removed. This is only for the
+headers. Cells content are not manipulated, except if `autotrim` is true.
+
+```
+" a header "     => "a header"
+"a       header" => "a header"
+"a  
+header  "        => "a header"
 ```
 
 > If the column you defined in your code doesn't exist in CSV resource **and**
@@ -447,7 +467,7 @@ CSV;
 
 $database = some_database_abstraction();
 
-$data = $parser->fromResource($resource, [
+$data = $parser->fromString($str, [
     'delimiter' => ';',
     'columns' => [
         'A as user' => new \voilab\csv\Optimizer(
