@@ -161,54 +161,6 @@ class Parser
     }
 
     /**
-     * Add post process behaviour for columns if needed
-     *
-     * @param array $data the processed data
-     * @param array $columns columns metadata
-     * @param array $options configuration options for parsing
-     * @return array the processed data
-     */
-    private function postProcess(array $data, array $columns, array $options) : array
-    {
-        $keys = array_keys($data[0]);
-        $result = [];
-        $metas = [];
-        foreach ($keys as $key) {
-            $meta = $columns[array_search($key, array_column($columns, 'name', 'index'))];
-            if ($options['columns'][$meta['full']] instanceof OptimizerInterface) {
-                $columnData = array_column($data, $key);
-                $metas[$key] = $meta;
-                $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $meta, $options);
-            }
-        }
-        if (!count($result)) {
-            return $data;
-        }
-        $resultKeys = array_keys($result);
-        foreach ($data as $i => $row) {
-            $index = $i + ($options['headers'] ? 2 : 1);
-            foreach ($resultKeys as $key) {
-                $value = $data[$i][$key];
-                $meta = $metas[$key];
-                $meta['type'] = 'optimizer';
-                try {
-                    $data[$i][$key] = isset($result[$key][$value])
-                        ? $result[$key][$value]
-                        : $options['columns'][$meta['full']]->absent($value, $index, $meta, $options);
-
-                } catch (\Exception $e) {
-                    if (is_callable($options['onError'])) {
-                        $options['onError']($e, $index, $meta, $options);
-                    } else {
-                        throw $e;
-                    }
-                }
-            }
-        }
-        return $data;
-    }
-
-    /**
      * Explode one row and parse each column, calling method if asked
      *
      * @param array $row the parsed row witht fgetcsv
@@ -255,6 +207,47 @@ class Parser
             }
         }
         return $parsed;
+    }
+
+    /**
+     * Add post process behaviour for columns if needed
+     *
+     * @param array $data the processed data
+     * @param array $columns columns metadata
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    private function postProcess(array $data, array $columns, array $options) : array
+    {
+        $keys = array_keys($data[0]);
+        $result = [];
+        foreach ($keys as $key) {
+            $meta = $columns[array_search($key, array_column($columns, 'name', 'index'))];
+            if (!$options['columns'][$meta['full']] instanceof OptimizerInterface) {
+                continue;
+            }
+            $columnData = array_column($data, $key);
+            $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $data, $result, $meta, $options);
+            // set the reduce result in the main data array
+            foreach ($data as $i => $row) {
+                $index = $i + ($options['headers'] ? 2 : 1);
+                $value = $data[$i][$key];
+                $meta['type'] = 'optimizer';
+                try {
+                    $data[$i][$key] = isset($result[$key][$value])
+                        ? $result[$key][$value]
+                        : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
+
+                } catch (\Exception $e) {
+                    if (is_callable($options['onError'])) {
+                        $options['onError']($e, $index, $meta, $options);
+                    } else {
+                        throw $e;
+                    }
+                }
+            }
+        }
+        return $data;
     }
 
     /**
