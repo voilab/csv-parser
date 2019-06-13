@@ -87,4 +87,35 @@ final class OptimizerTest extends TestCase
             ]
         ]);
     }
+
+    public function testOptimizerInsideOther() : void
+    {
+        $result = $this->parser->fromFile($this->file, [
+            'strictHeaders' => false,
+            'columns' => [
+                'A' => new \voilab\csv\Optimizer(
+                    function (string $data) { return $data; },
+                    function (array $data) {
+                        return array_reduce($data, function ($acc, $value) {
+                            $acc[$value] = 'user:' . $value;
+                            return $acc;
+                        }, []);
+                    }
+                ),
+                'B' => new \voilab\csv\Optimizer(
+                    function (string $data) { return $data; },
+                    function (array $data) { return []; },
+                    function (string $data, int $index, array $parsed) {
+                        return $parsed['A'] . ':b';
+                    }
+                )
+            ]
+        ]);
+        $expect = [
+            [ 'A' => 'user:4', 'B' => 'user:4:b' ],
+            [ 'A' => 'user:9', 'B' => 'user:9:b' ],
+            [ 'A' => 'user:4', 'B' => 'user:4:b' ]
+        ];
+        $this->assertEquals($result, $expect);
+    }
 }

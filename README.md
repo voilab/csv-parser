@@ -1,7 +1,7 @@
 # CSV parser
 
 This class uses `fgetcsv` to parse a file or a string, extract columns and
-provide per-column method to manipulate data.
+provide per-column methods to manipulate data.
 
 It comes with a basic error handling, so it is possible to collect all errors
 in the CSV resource and, then, do something with this array of errors.
@@ -18,7 +18,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^0.5.0"
+        "voilab/csv": "^0.6.0"
     }
 }
 ```
@@ -91,18 +91,22 @@ $parser->fromFile('file.csv', [
     'enclosure' => '"',
     'escape' => '\\',
     'length' => 0,
+
     // headers management
     'headers' => true,
     'strictHeaders' => true,
     'strictDefinedHeaders' => true,
+
     // big files
     'start' => 0,
     'size' => 0,
+
     // data pre-manipulation
     'autotrim' => true,
     'onBeforeColumnParse' => function (string $data) {
         return utf8_encode($data);
     },
+
     // data post-manipulation
     'onRowParsed' => function (array $row) {
         $row['other_stuff'] = do_some_stuff($row);
@@ -111,6 +115,7 @@ $parser->fromFile('file.csv', [
     'onError' => function (\Exception $e, int $index) {
         throw new \Exception($e->getMessage() . ": at line $index");
     }
+
     // CSV columns definition
     'columns' => [
         'A as id' => function (string $data) {
@@ -430,6 +435,8 @@ Same as Column function (see above)
 | Name | Type | Description |
 |------|------|-------------|
 | $data | `array` | All the data parsed, for the column |
+| $parsed | `array` | The parsed data (complete set of data) |
+| $optimized | `array` | Columns already optimized. Key => value pair, where key is column name and value is the reduced function result of the column |
 | $meta | `array` | The current column information |
 | $options | `array` | The options array |
 
@@ -448,8 +455,10 @@ value.
 
 | Name | Type | Description |
 |------|------|-------------|
-| $value | `mixed` | The data parsed for the column |
+| $value | `mixed` | The data parsed for the column, for this row |
 | $index | `int` | The line index actually parsed. Correspond to the line number in the CSV resource (taken headers into account) |
+| $parsed | `array` | The parsed data of this row |
+| $optimized | `array` | Columns already optimized. Key => value pair, where key is column name and value is the reduced function result of the column |
 | $meta | `array` | The current column information |
 | $options | `array` | The options array |
 
@@ -461,8 +470,8 @@ value.
 ```php
 $str = <<<CSV
 A; B
-4; John
-2; Sybille
+4; updated John
+2; updated Sybille
 CSV;
 
 $database = some_database_abstraction();
@@ -475,7 +484,7 @@ $data = $parser->fromString($str, [
                 return (int) $data;
             },
             function (array $data) use ($database) {
-                $query = 'SELECT * FROM user WHERE id IN(?)';
+                $query = 'SELECT id, firstname FROM user WHERE id IN(?)';
                 $users = $database->query($query, array_unique($data));
                 return array_reduce($users, function ($acc, $user) {
                     $acc[$user->id] = $user;
@@ -497,12 +506,12 @@ print_r($result);
 /* prints:
 Array (
     [0] => Array (
-        [A] => User ( id => 4, firstname => Johnny )
-        [B] => John
+        [A] => User ( id => 4, firstname => John )
+        [B] => updated John
     )
     [1] => Array (
-        [A] => User ( id => 2, firstname => Sybilly )
-        [B] => Sybille
+        [A] => User ( id => 2, firstname => Sybille )
+        [B] => updated Sybille
     )
 )
 */
