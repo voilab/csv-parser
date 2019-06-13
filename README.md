@@ -18,20 +18,6 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^1.0.0"
-    }
-}
-```
-
-``` bash
-$ composer require voilab/csv
-```
-
-### Install PHP5 compatible version
-
-``` json
-{
-    "require": {
         "voilab/csv": "dev-feature/php5"
     }
 }
