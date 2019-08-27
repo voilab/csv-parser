@@ -44,4 +44,10 @@ class Exception extends \Exception
      * @var int
      */
     const NORESOURCE = 6;
+
+    /**
+     * Resource has no header line and is not seekable
+     * @var int
+     */
+    const NOTSEEKABLE = 7;
 }
