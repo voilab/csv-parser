@@ -185,7 +185,11 @@ class Parser
         $keys = array_keys($data[0]);
         $result = [];
         foreach ($keys as $key) {
-            $meta = $columns[array_search($key, array_column($columns, 'name', 'index'))];
+            $found = array_search($key, array_column($columns, 'name', 'index'));
+            if ($found === false) {
+                continue;
+            }
+            $meta = $columns[$found];
             if (!$options['columns'][$meta['full']] instanceof OptimizerInterface) {
                 continue;
             }
