@@ -506,12 +506,12 @@ print_r($result);
 /* prints:
 Array (
     [0] => Array (
-        [A] => User ( id => 4, firstname => John )
-        [B] => updated John
+        [user] => User ( id => 4, firstname => John )
+        [firstname] => updated John
     )
     [1] => Array (
-        [A] => User ( id => 2, firstname => Sybille )
-        [B] => updated Sybille
+        [user] => User ( id => 2, firstname => Sybille )
+        [firstname] => updated Sybille
     )
 )
 */

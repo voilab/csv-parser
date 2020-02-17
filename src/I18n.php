@@ -14,7 +14,8 @@ class I18n implements I18nInterface {
         'DIFFCOLUMNS' => "At line [%s], columns don't match headers",
         'HEADERMISSING' => "Header [%s] not found in CSV resource",
         'EMPTY' => "CSV data is empty",
-        'HEADEREXISTS' => "Header [%s] can't be the same for two columns"
+        'HEADEREXISTS' => "Header [%s] can't be the same for two columns",
+        'NOTSEEKABLE' => "Resource not seekable. Please add a header line or make it seekable"
     ];
 
     /**

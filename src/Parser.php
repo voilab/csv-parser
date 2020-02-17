@@ -44,6 +44,18 @@ class Parser
     ];
 
     /**
+     * Get header name with alias. Produce "initialHeader as alias"
+     *
+     * @param string $csvHeader the csv header name
+     * @param string $alias the alias of this header
+     * @return string the column name
+     */
+    public static function alias($csvHeader, $alias)
+    {
+        return $csvHeader . static::COLUMNALIAS . $alias;
+    }
+
+    /**
      * Constructor of the CSV data parser.
      *
      * @param array $options default options for parsing
@@ -161,6 +173,51 @@ class Parser
     }
 
     /**
+     * Add post process behaviour for columns if needed
+     *
+     * @param array $data the processed data
+     * @param array $columns columns metadata
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    private function postProcess(array $data, array $columns, array $options)
+    {
+        $keys = array_keys($data[0]);
+        $result = [];
+        foreach ($keys as $key) {
+            $found = array_search($key, array_column($columns, 'name', 'index'));
+            if ($found === false) {
+                continue;
+            }
+            $meta = $columns[$found];
+            if (!$options['columns'][$meta['full']] instanceof OptimizerInterface) {
+                continue;
+            }
+            $columnData = array_column($data, $key);
+            $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $data, $result, $meta, $options);
+            // set the reduce result in the main data array
+            foreach ($data as $i => $row) {
+                $index = $i + ($options['headers'] ? 2 : 1);
+                $value = $data[$i][$key];
+                $meta['type'] = 'optimizer';
+                try {
+                    $data[$i][$key] = isset($result[$key][$value])
+                        ? $result[$key][$value]
+                        : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
+
+                } catch (\Exception $e) {
+                    if (is_callable($options['onError'])) {
+                        $options['onError']($e, $index, $meta, $options);
+                    } else {
+                        throw $e;
+                    }
+                }
+            }
+        }
+        return $data;
+    }
+
+    /**
      * Explode one row and parse each column, calling method if asked
      *
      * @param array $row the parsed row witht fgetcsv
@@ -210,47 +267,6 @@ class Parser
     }
 
     /**
-     * Add post process behaviour for columns if needed
-     *
-     * @param array $data the processed data
-     * @param array $columns columns metadata
-     * @param array $options configuration options for parsing
-     * @return array the processed data
-     */
-    private function postProcess(array $data, array $columns, array $options)
-    {
-        $keys = array_keys($data[0]);
-        $result = [];
-        foreach ($keys as $key) {
-            $meta = $columns[array_search($key, array_column($columns, 'name', 'index'))];
-            if (!$options['columns'][$meta['full']] instanceof OptimizerInterface) {
-                continue;
-            }
-            $columnData = array_column($data, $key);
-            $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $data, $result, $meta, $options);
-            // set the reduce result in the main data array
-            foreach ($data as $i => $row) {
-                $index = $i + ($options['headers'] ? 2 : 1);
-                $value = $data[$i][$key];
-                $meta['type'] = 'optimizer';
-                try {
-                    $data[$i][$key] = isset($result[$key][$value])
-                        ? $result[$key][$value]
-                        : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
-
-                } catch (\Exception $e) {
-                    if (is_callable($options['onError'])) {
-                        $options['onError']($e, $index, $meta, $options);
-                    } else {
-                        throw $e;
-                    }
-                }
-            }
-        }
-        return $data;
-    }
-
-    /**
      * Return the columns
      *
      * @param resource $data the CSV data resource
@@ -262,7 +278,7 @@ class Parser
         $csvHeaders = $this->getCsvHeaders($data, $options);
         $optionsHeaders = $this->getOptionsHeaders($options);
 
-        $max = max($csvHeaders)['index'];
+        $max = count($csvHeaders);
         $headers = [];
         foreach ($optionsHeaders as $key => $header) {
             if (($options['strictHeaders'] || $options['strictDefinedHeaders']) && !isset($csvHeaders[$key])) {
@@ -294,6 +310,10 @@ class Parser
     {
         $columns = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
         if (!$options['headers']) {
+            $meta = stream_get_meta_data($data);
+            if (!$meta['seekable']) {
+                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
+            }
             rewind($data);
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
