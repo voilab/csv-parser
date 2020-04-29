@@ -93,7 +93,7 @@ class Parser
      *
      * @return int
      */
-    public function getLastSeek() : int
+    public function getLastSeek()
     {
         return $this->lastSeek ?: 0;
     }
