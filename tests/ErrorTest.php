@@ -71,4 +71,54 @@ final class ErrorTets extends TestCase
             ]
         ]);
     }
+
+    public function testOptimizerReduceError() : void
+    {
+        $this->expectExceptionMessage('reduce');
+        $result = $this->parser->fromFile($this->file, [
+            'strictHeaders' => false,
+            'onError' => function ($e, $index, $meta) {
+                $this->assertNull($index);
+                throw $e;
+            },
+            'columns' => [
+                'A' => new \voilab\csv\Optimizer(
+                    function (string $data) {
+                        return $data;
+                    },
+                    function (array $data) {
+                        throw new \Exception('reduce');
+                    },
+                    function ($data) {
+                        throw new \Exception($data);
+                    }
+                )
+            ]
+        ]);
+    }
+
+    public function testOptimizerReduceAbsentError() : void
+    {
+        $this->expectExceptionMessage(4);
+        $result = $this->parser->fromFile($this->file, [
+            'strictHeaders' => false,
+            'onError' => function ($e, $index, $meta) {
+                $this->assertNotNull($index);
+                throw $e;
+            },
+            'columns' => [
+                'A' => new \voilab\csv\Optimizer(
+                    function (string $data) {
+                        return $data;
+                    },
+                    function (array $data) {
+                        return [];
+                    },
+                    function ($data) {
+                        throw new \Exception($data);
+                    }
+                )
+            ]
+        ]);
+    }
 }
