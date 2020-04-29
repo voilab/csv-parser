@@ -16,6 +16,12 @@ class Parser
     private $i18n;
 
     /**
+     * Last seek position in the resource
+     * @var int
+     */
+    private $lastSeek;
+
+    /**
      * Default options used for parsing CSV
      * @var array
      */
@@ -32,6 +38,7 @@ class Parser
         // big files
         'size' => 0,
         'start' => 0,
+        'seek' => 0,
         // data pre-manipulation
         'autotrim' => true,
         'onBeforeColumnParse' => null,
@@ -77,6 +84,18 @@ class Parser
     {
         ini_set('auto_detect_line_endings', (bool) $value);
         return $this;
+    }
+
+    /**
+     * Return last position parsed of the resource, if there's a [size] option.
+     * This value can be passed to [seek] option to start exactely where it
+     * ended.
+     *
+     * @return int
+     */
+    public function getLastSeek() : int
+    {
+        return $this->lastSeek ?: 0;
     }
 
     /**
@@ -136,6 +155,17 @@ class Parser
         }
 
         $columns = $this->getColumns($data, $options);
+        // seek directly at the right place
+        if ($options['seek']) {
+            $meta = stream_get_meta_data($data);
+            if (!$meta['seekable']) {
+                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
+            }
+            $options['start'] = 0;
+            if (fseek($data, $options['seek']) === -1) {
+                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
+            }
+        }
 
         $parsed = [];
         $i = 0;
@@ -166,6 +196,7 @@ class Parser
             }
             $i++;
         }
+        $this->lastSeek = @ftell($data);
         if (!count($parsed)) {
             return $parsed;
         }
@@ -194,23 +225,35 @@ class Parser
                 continue;
             }
             $columnData = array_column($data, $key);
-            $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $data, $result, $meta, $options);
-            // set the reduce result in the main data array
-            foreach ($data as $i => $row) {
-                $index = $i + ($options['headers'] ? 2 : 1);
-                $value = $data[$i][$key];
-                $meta['type'] = 'optimizer';
-                try {
-                    $data[$i][$key] = isset($result[$key][$value])
-                        ? $result[$key][$value]
-                        : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
+            try {
+                $meta['type'] = 'reducer';
+                $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $data, $result, $meta, $options);
+                // set the reduce result in the main data array
+                foreach ($data as $i => $row) {
+                    $index = $i + ($options['headers'] ? 2 : 1);
+                    $value = $data[$i][$key];
+                    $meta['type'] = 'optimizer';
+                    try {
+                        $data[$i][$key] = isset($result[$key][$value])
+                            ? $result[$key][$value]
+                            : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
 
-                } catch (\Exception $e) {
-                    if (is_callable($options['onError'])) {
-                        $options['onError']($e, $index, $meta, $options);
-                    } else {
-                        throw $e;
+                    } catch (\Exception $e) {
+                        if (is_callable($options['onError'])) {
+                            $options['onError']($e, $index, $meta, $options);
+                        } else {
+                            throw $e;
+                        }
                     }
+                }
+            } catch (\Exception $e) {
+                if ($meta['type'] === 'optimizer') {
+                    throw $e;
+                }
+                if (is_callable($options['onError'])) {
+                    $options['onError']($e, null, $meta, $options);
+                } else {
+                    throw $e;
                 }
             }
         }

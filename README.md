@@ -86,6 +86,7 @@ $parser->fromFile('file.csv', [
     // big files
     'start' => 0,
     'size' => 0,
+    'seek' => 0,
 
     // data pre-manipulation
     'autotrim' => true,
@@ -149,6 +150,7 @@ https://php.net/fgetcsv
 | strictDefinedHeaders | `bool` | `true` | Columns defined in [columns] options must all be present in CSV resource, but CSV can contains other columns |
 | start | `int` | `0` | Line index to start with. Used in big files, in conjunction with [size] option. The first index of data is `0`, regardless of headers |
 | size | `int` | `0` | Number of lines to process. `0` ignores [start] and [size] |
+| seek | `int` | `0` | Pointer position in file, used in conjunction with [size]. Take over [start] to define the starting position |
 | autotrim | `bool` | `true` | Trim all cell content, so you have always trimmed data in you columns functions |
 | onBeforeColumnParse | `callable` | `null` | Method called just before any defined column method |
 | onRowParsed | `callable` | `null` | Method called when a row has finished parsing |
@@ -357,6 +359,50 @@ Array (
     )
 )
 */
+```
+
+### Seek in big files
+
+You can use the seek mechanism to accelerate parsing big files.
+
+```php
+$str = <<<CSV
+A; B
+4; hello
+2; world
+...
+CSV;
+
+$parser = new \voilab\csv\Parser();
+
+$result = $parser->fromString($str, [
+    'delimiter' => ';',
+    'size' => 2,
+    'columns' => [
+        'B' => function (string $data) {
+            return ucfirst($data);
+        },
+        'A' => function (string $data) {
+            return (int) $data;
+        }
+    ]
+]);
+
+$lastPos = $parser->getLastSeek();
+
+$nextResult = $parser->fromString($str, [
+    'delimiter' => ';',
+    'size' => 2,
+    'seek' => $lastPos,
+    'columns' => [
+        'B' => function (string $data) {
+            return ucfirst($data);
+        },
+        'A' => function (string $data) {
+            return (int) $data;
+        }
+    ]
+]);
 ```
 
 ### Line endings problems
