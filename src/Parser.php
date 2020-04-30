@@ -19,7 +19,7 @@ class Parser
      * Last seek position in the resource
      * @var int
      */
-    private $lastSeek;
+    private $pointerPos;
 
     /**
      * Default options used for parsing CSV
@@ -93,9 +93,9 @@ class Parser
      *
      * @return int
      */
-    public function getLastSeek() : int
+    public function getPointerPosition() : int
     {
-        return $this->lastSeek ?: 0;
+        return $this->pointerPos ?: 0;
     }
 
     /**
@@ -161,7 +161,6 @@ class Parser
             if (!$meta['seekable']) {
                 throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
             }
-            $options['start'] = 0;
             if (fseek($data, $options['seek']) === -1) {
                 throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
             }
@@ -169,6 +168,11 @@ class Parser
 
         $parsed = [];
         $i = 0;
+        if ($options['seek'] && $options['start']) {
+            // if seek and start are defined, we can set the starting point
+            // to what is defined
+            $i = $options['start'];
+        }
         while (
             (!$options['size'] || $i < $options['size'] + $options['start']) &&
             false !== ($row = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']))
@@ -196,7 +200,7 @@ class Parser
             }
             $i++;
         }
-        $this->lastSeek = @ftell($data);
+        $this->pointerPos = @ftell($data);
         if (!count($parsed)) {
             return $parsed;
         }

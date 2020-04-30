@@ -365,6 +365,13 @@ Array (
 
 You can use the seek mechanism to accelerate parsing big files.
 
+Yon _can_ specify the start index. But it is not mandatory. It is used in the
+error managment, to know which line bugs, or in the other methods calls, where
+[$index] is given.
+
+You are responsible for keeping [seek] and [start] snychronized. If you don't,
+and you have errors, the indexes would be irrelevant.
+
 ```php
 $str = <<<CSV
 A; B
@@ -388,11 +395,12 @@ $result = $parser->fromString($str, [
     ]
 ]);
 
-$lastPos = $parser->getLastSeek();
+$lastPos = $parser->getPointerPosition();
 
 $nextResult = $parser->fromString($str, [
     'delimiter' => ';',
     'size' => 2,
+    'start' => 2, // yon **can** specify the start index. Not mandatory.
     'seek' => $lastPos,
     'columns' => [
         'B' => function (string $data) {
