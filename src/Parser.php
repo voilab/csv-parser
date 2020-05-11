@@ -1,6 +1,8 @@
 <?php
 namespace voilab\csv;
 
+use Psr\Http\Message\StreamInterface;
+
 class Parser
 {
     /**
@@ -31,6 +33,8 @@ class Parser
         'enclosure' => '"',
         'escape' => '\\',
         'length' => 0,
+        // PSR stream
+        'lineEnding' => "\n",
         // headers
         'headers' => true,
         'strictHeaders' => true,
@@ -111,7 +115,7 @@ class Parser
             throw new Exception(sprintf($this->i18n->t('NOFILE'), $file), Exception::NOFILE);
         }
         $resource = fopen($file, 'r');
-        $result = $this->fromResource($resource, $options);
+        $result = $this->parse(new CsvStream($resource), $options);
         fclose($resource);
         return $result;
     }
@@ -125,11 +129,11 @@ class Parser
      */
     public function fromString(string $data, array $options = []) : array
     {
-        $stream = fopen('php://temp', 'r+');
-        fwrite($stream, $data);
-        rewind($stream);
-        $result = $this->fromResource($stream, $options);
-        fclose($stream);
+        $resource = fopen('php://temp', 'r+');
+        fwrite($resource, $data);
+        rewind($resource);
+        $result = $this->parse(new CsvStream($resource), $options);
+        fclose($resource);
         return $result;
     }
 
@@ -145,6 +149,30 @@ class Parser
         if (!is_resource($data)) {
             throw new Exception($this->i18n->t('NORESOURCE'), Exception::NORESOURCE);
         }
+        return $this->parse(new CsvStream($data), $options);
+    }
+
+    /**
+     * Parse a CSV stream
+     *
+     * @param StreamInterface $data the CSV stream
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function fromStream(StreamInterface $data, array $options = []) : array
+    {
+        return $this->parse(new Stream($data, $options), $options);
+    }
+
+    /**
+     * Parse a stream that implements the StreamInterface
+     *
+     * @param CsvInterface $data the CSV data stream
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function parse(CsvInterface $data, array $options = []) : array
+    {
         $options = array_merge($this->options, $options);
         if (!count($options['columns'])) {
             throw new Exception($this->i18n->t('NOCOLUMN'), Exception::NOCOLUMN);
@@ -157,13 +185,7 @@ class Parser
         $columns = $this->getColumns($data, $options);
         // seek directly at the right place
         if ($options['seek']) {
-            $meta = stream_get_meta_data($data);
-            if (!$meta['seekable']) {
-                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
-            }
-            if (fseek($data, $options['seek']) === -1) {
-                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
-            }
+            $data->seek($options['seek']);
         }
 
         $parsed = [];
@@ -175,7 +197,7 @@ class Parser
         }
         while (
             (!$options['size'] || $i < $options['size'] + $options['start']) &&
-            false !== ($row = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']))
+            false !== ($row = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']))
         ) {
             if ($options['size'] && $i < $options['start']) {
                 $i++;
@@ -200,7 +222,7 @@ class Parser
             }
             $i++;
         }
-        $this->pointerPos = @ftell($data);
+        $this->pointerPos = $data->tell();
         if (!count($parsed)) {
             return $parsed;
         }
@@ -316,11 +338,11 @@ class Parser
     /**
      * Return the columns
      *
-     * @param resource $data the CSV data resource
+     * @param CsvInterface $data the CSV data resource
      * @param array $options configuration options for parsing
      * @return array the columns. If they are aliased, return the aliased ones
      */
-    private function getColumns($data, array $options) : array
+    private function getColumns(CsvInterface $data, array $options) : array
     {
         $csvHeaders = $this->getCsvHeaders($data, $options);
         $optionsHeaders = $this->getOptionsHeaders($options);
@@ -349,19 +371,15 @@ class Parser
     /**
      * Get headers from CSV resource
      *
-     * @param resource $data the CSV data resource
+     * @param CsvInterface $data the CSV data resource
      * @param array $options configuration options for parsing
      * @return array
      */
-    private function getCsvHeaders($data, array $options) : array
+    private function getCsvHeaders(CsvInterface $data, array $options) : array
     {
-        $columns = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
+        $columns = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
         if (!$options['headers']) {
-            $meta = stream_get_meta_data($data);
-            if (!$meta['seekable']) {
-                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
-            }
-            rewind($data);
+            $data->rewind();
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
             throw new Exception($this->i18n->t('EMPTY'), Exception::EMPTY);
