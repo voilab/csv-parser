@@ -3,12 +3,13 @@
 This class uses `fgetcsv` to parse a file or a string, extract columns and
 provide per-column methods to manipulate data.
 
+It can parse large files, HTTP streams, any types of resources, or strings.
+
 It comes with a basic error handling, so it is possible to collect all errors
 in the CSV resource and, then, do something with this array of errors.
 
-The process is very quick and uses all the power of `fgetcsv`. Very small code
-is added around it to provide all the functionalities. It is mainly up to you
-to be aware of what your methods do and how many memory they use.
+It is extendable, so you can parse your own type of resource/stream, if you
+have very special needs.
 
 ## Install
 
@@ -18,7 +19,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^1.0.0"
+        "voilab/csv": "^2.0.0"
     }
 }
 ```
@@ -28,6 +29,8 @@ $ composer require voilab/csv
 ```
 
 ### Install PHP5 compatible version
+
+This PHP5 version can't parse streams.
 
 ``` json
 {
@@ -51,6 +54,10 @@ $result = $parser->fromFile($file = '/path/file.csv', $options = []);
 
 // or with a raw resource (fopen, fsockopen, php://memory, etc)
 $result = $parser->fromResource($resource, $options = []);
+
+// or with a PSR stream interface (ex. HTTP response message body)
+$response = $someHttpClient->request('GET', '/');
+$result => $parser->fromStream($response->getBody(), $options = []);
 ```
 
 ### Simple example
@@ -91,6 +98,9 @@ $parser->fromFile('file.csv', [
     'enclosure' => '"',
     'escape' => '\\',
     'length' => 0,
+
+    // PSR stream
+    'lineEnding' => "\n",
 
     // headers management
     'headers' => true,
@@ -159,6 +169,7 @@ https://php.net/fgetcsv
 | enclosure | `string` | `"` | `fgetcsv` the enclosure string. To tell PHP there isn't enclosure, set to and empty string |
 | escape | `string` | `\\` | `fgetcsv` the escape string |
 | length | `int` | `0` | `fgetcsv` the line length |
+| lineEnding | `string` | `\n` | Used with PSR streams to define what is a line ending. You must set a length, so it's possible to read a line |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
 | strictHeaders | `bool` | `true` | Columns defined in [columns] option must match exactly the columns in CSV resource |
 | strictDefinedHeaders | `bool` | `true` | Columns defined in [columns] options must all be present in CSV resource, but CSV can contains other columns |
@@ -422,6 +433,9 @@ in line endings, you can use the method below to activate auto detect.
 
 > Note that auto detect is not reseted to initial value after the parsing has
 > finished.
+
+When parsing streams (like HTTP response message body), line ending must be
+specified in the array options.
 
 ### Error management
 
