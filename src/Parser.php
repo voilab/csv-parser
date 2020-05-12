@@ -115,7 +115,7 @@ class Parser
             throw new Exception(sprintf($this->i18n->t('NOFILE'), $file), Exception::NOFILE);
         }
         $resource = fopen($file, 'r');
-        $result = $this->parse(new CsvStream($resource), $options);
+        $result = $this->parse(new CsvResource($resource), $options);
         fclose($resource);
         return $result;
     }
@@ -132,7 +132,7 @@ class Parser
         $resource = fopen('php://temp', 'r+');
         fwrite($resource, $data);
         rewind($resource);
-        $result = $this->parse(new CsvStream($resource), $options);
+        $result = $this->parse(new CsvResource($resource), $options);
         fclose($resource);
         return $result;
     }
@@ -149,7 +149,7 @@ class Parser
         if (!is_resource($data)) {
             throw new Exception($this->i18n->t('NORESOURCE'), Exception::NORESOURCE);
         }
-        return $this->parse(new CsvStream($data), $options);
+        return $this->parse(new CsvResource($data), $options);
     }
 
     /**
@@ -161,13 +161,13 @@ class Parser
      */
     public function fromStream(StreamInterface $data, array $options = []) : array
     {
-        return $this->parse(new Stream($data, $options), $options);
+        return $this->parse(new CsvStream($data, $options), $options);
     }
 
     /**
      * Parse a stream that implements the StreamInterface
      *
-     * @param CsvInterface $data the CSV data stream
+     * @param CsvInterface $data the CSV data resource
      * @param array $options configuration options for parsing
      * @return array the processed data
      */

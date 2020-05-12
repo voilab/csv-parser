@@ -1,3 +1,8 @@
+## Release 2.0.1
+
+- changed interfaces names
+- documentation
+
 ## Release 2.0.0
 
 - internally, uses CsvInterface to manipulate and parse data

@@ -1,209 +1,152 @@
 <?php
 namespace voilab\csv;
 
+use Psr\Http\Message\StreamInterface;
+
 /**
- * This class provides methods used to manipulate streams. It's exactely like
- * the Psr StreamInterface, but it has an other required method, getCsv(), which
- * is a wrapper for fgetcsv()
+ * This class is a simple wrapper for Psr StreamInterface, which add the other
+ * required method: getCsv(), which is the one responsible for extracting one
+ * line of the CSV and create an array out of it
  */
 class CsvStream implements CsvInterface
 {
     /**
-     * Stream metadata
-     * @var array
-     */
-    private $meta = [];
-
-    /**
-     * File statistics
-     * @var array
-     */
-    private $stat;
-
-    /**
-     * Stream resource
-     * @var resource
+     * Stream
+     * @var StreamInterface
      */
     private $resource;
 
     /**
-     * File mode hash
+     * Options array
      * @var array
      */
-    private $readWriteHash = [
-        'r' => [
-            'r', 'r+', 'w+', 'a+', 'x+', 'c+',
-            'rb', 'r+b', 'w+b', 'a+b', 'x+b', 'c+b',
-            'rt', 'r+t', 'w+t', 'a+t', 'x+t', 'c+t'
-        ],
-        'w' => [
-            'r+', 'w', 'w+', 'a', 'a+', 'x', 'x+', 'c', 'c+',
-            'r+b', 'wb', 'w+b', 'ab', 'a+b', 'xb', 'x+b', 'cb', 'c+b',
-            'r+t', 'wt', 'w+t', 'at', 'a+t', 'xt', 'x+t', 'ct', 'c+t'
-        ]
+    private $options = [
+        'lineEnding' => "\n"
     ];
+
+    /**
+     * Current buffer string
+     * @var string
+     */
+    private $buffer = '';
 
     /**
      * Resource stream constructor
      *
-     * @param resource $data
+     * @param StreamInterface $data
+     * @param array $options
      */
-    public function __construct($data)
+    public function __construct(StreamInterface $data, array $options = [])
     {
-        if (!is_resource($data)) {
-            throw new \RuntimeException('Data is not a resource');
-        }
         $this->resource = $data;
-        $this->meta = stream_get_meta_data($data);
-        $this->stat = fstat($data);
-    }
-
-    /**
-     * Returns underlying resource
-     *
-     * @return resource
-     */
-    public function getResource()
-    {
-        return $this->resource;
+        $this->options = array_merge($this->options, $options);
     }
 
     public function __toString() : string
     {
-        if (!$this->resource) {
-            return '';
-        }
-        try {
-            $this->rewind();
-            return $this->getContents();
-        } catch (\Exception $e) {
-            return '[toString error : ' . $e->getMessage() . ']';
-        }
+        return $this->resource->__toString();
     }
 
     public function close()
     {
-        if ($this->resource && is_resource($this->resource)) {
-            fclose($this->resource);
-        }
-        $this->detach();
+        $this->resource->close();
     }
 
     public function detach()
     {
-        $this->meta = [];
-        $resource = $this->resource;
-        $this->resource = null;
-        return $resource;
+        $this->resource->detach();
     }
 
     public function getSize()
     {
-        return isset($this->stat['size']) ? $this->stat['size'] : null;
+        return $this->resource->getSize();
     }
 
     public function tell()
     {
-        if (!$this->resource) {
-            return;
-        }
-        $result = ftell($this->resource);
-        if ($result === false) {
-            throw new \RuntimeException('Unable to get current stream position');
-        }
-        return $result;
+        return $this->resource->tell();
     }
 
     public function eof()
     {
-        return !$this->resource || feof($this->resource);
+        return $this->resource->eof();
     }
 
     public function isSeekable() : bool
     {
-        return isset($this->meta['seekable']) ? $this->meta['seekable'] : false;
+        return $this->resource->isSeekable();
     }
 
     public function seek($offset, $whence = \SEEK_SET)
     {
-        if (!$this->isSeekable()) {
-            return;
-        }
-        if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new \RuntimeException('Stream is not seekable');
-        }
+        $this->resource->seek($offset, $whence);
     }
 
     public function rewind()
     {
-        if (!$this->resource) {
-            return;
-        }
-        if (rewind($this->resource) === false) {
-            throw new \RuntimeException('Unable to rewind stream');
-        }
+        $this->resource->rewind();
     }
 
     public function isWritable() : bool
     {
-        $m = $this->meta;
-        return isset($m['mode']) && in_array($m['mode'], $this->readWriteHash['w']);
+        return $this->resource->isWritable();
     }
 
     public function write($string) : int
     {
-        if (!$this->isWritable()) {
-            return 0;
-        }
-        $result = fwrite($this->resource, $string);
-        if ($result === false) {
-            throw new \RuntimeException('Stream is not writable');
-        }
-        return $result;
+        return $this->resource->write($string);
     }
 
     public function isReadable() : bool
     {
-        $m = $this->meta;
-        return isset($m['mode']) && in_array($m['mode'], $this->readWriteHash['r']);
+        return $this->resource->isReadable();
     }
 
     public function read($length) : string
     {
-        if (!$this->isReadable()) {
-            return '';
-        }
-        $result = fread($this->resource, $length);
-        if ($result === false) {
-            throw new \RuntimeException('Stream not readable');
-        }
-        return $result;
+        return $this->resource->read($length);
     }
 
     public function getContents() : string
     {
-        if (!$this->resource) {
-            return '';
-        }
-        $result = stream_get_contents($this->resource);
-        if ($result === false) {
-            throw new \RuntimeException('Unable to get stream content');
-        }
-        return $result;
+        return $this->resource->getContents();
     }
 
     public function getMetadata($key = null)
     {
-        return $key !== null
-            ? (isset($this->meta[$key]) ? $this->meta[$key] : null)
-            : $this->meta;
+        return $this->resource->getMetadata($key);
     }
 
+    /**
+     * @author Method largely inspired from https://github.com/offdev/csv
+     * @inheritdoc
+     */
     public function getCsv($length, $delimiter, $enclosure, $escape)
     {
         if (!$this->resource) {
             return null;
         }
-        return fgetcsv($this->resource, $length, $delimiter, $enclosure, $escape);
+        $remaining = $length - strlen($this->buffer);
+        if ($remaining > 0 && !$this->resource->eof()) {
+            $this->buffer .= $this->resource->read($remaining);
+        }
+
+        $pos = mb_strpos($this->buffer, $this->options['lineEnding']);
+        if ($pos !== false || (!empty($this->buffer) && $this->resource->eof())) {
+            $line = ($pos !== false)
+                ? mb_substr($this->buffer, 0, $pos)
+                : $this->buffer;
+
+            $this->buffer = ($pos !== false)
+                ? mb_substr($this->buffer, $pos + mb_strlen($this->options['lineEnding']))
+                : '';
+
+            return str_getcsv($line, $delimiter, $enclosure, $escape);
+        }
+
+        if (!$length || !empty($this->buffer)) {
+            throw new \RuntimeException('Buffer length too small. No line ending found.');
+        }
+        return false;
     }
 }
