@@ -57,7 +57,10 @@ $result = $parser->fromResource($resource, $options = []);
 
 // or with a PSR stream interface (ex. HTTP response message body)
 $response = $someHttpClient->request('GET', '/');
-$result => $parser->fromStream($response->getBody(), $options = []);
+$result = $parser->fromStream($response->getBody(), $options = []);
+
+// or with a custom \voilab\csv\CsvInterface implementation
+$result => $parser->parse($myCsvInterface, $options = []);
 ```
 
 ### Simple example
@@ -160,7 +163,7 @@ $parser->fromFile('file.csv', [
 
 These are the options you can provide at constructor level or when calling
 `from*` methods. Details for `fgetcsv` options can be found here:
-https://php.net/fgetcsv
+https://php.net/fgetcsv and https://php.net/str_getcsv
 
 
 | Name | Type | Default | Description |
@@ -584,6 +587,12 @@ Array (
 )
 */
 ```
+
+## Known issues
+
++ with PSR streams, carriage returns are not supported in headers and in cells
+content
+
 ## Testing
 ```
 $ /vendor/bin/phpunit
