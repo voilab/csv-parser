@@ -8,8 +8,7 @@ final class MissingHeadersTest extends TestCase
     {
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
-            'strictHeaders' => false,
-            'strictDefinedHeaders' => false
+            'strict' => false
         ]);
         $this->file = __DIR__ . '/fixtures/csv-missing-headers.csv';
     }

@@ -12,12 +12,6 @@ class Parser
     const COLUMNALIAS = ' as ';
 
     /**
-     * Error texts translation
-     * @var I18nInterface
-     */
-    private $i18n;
-
-    /**
      * Last seek position in the resource
      * @var int
      */
@@ -37,8 +31,8 @@ class Parser
         'lineEnding' => "\n",
         // headers
         'headers' => true,
-        'strictHeaders' => true,
-        'strictDefinedHeaders' => true,
+        'strict' => true,
+        'required' => [],
         // big files
         'size' => 0,
         'start' => 0,
@@ -70,12 +64,10 @@ class Parser
      * Constructor of the CSV data parser.
      *
      * @param array $options default options for parsing
-     * @param I18nInterface|null $i18n custom translations for errors
      */
-    public function __construct(array $options = [], I18nInterface $i18n = null)
+    public function __construct(array $options = [])
     {
         $this->options = array_merge($this->options, $options);
-        $this->i18n = $i18n ?: new I18n();
     }
 
     /**
@@ -112,7 +104,7 @@ class Parser
     public function fromFile(string $file, array $options = []) : array
     {
         if (!file_exists($file)) {
-            throw new Exception(sprintf($this->i18n->t('NOFILE'), $file), Exception::NOFILE);
+            throw new Exception(sprintf("File [%s] doesn't exist", $file), Exception::NOFILE);
         }
         $resource = fopen($file, 'r');
         $result = $this->parse(new CsvResource($resource), $options);
@@ -147,7 +139,7 @@ class Parser
     public function fromResource($data, array $options = []) : array
     {
         if (!is_resource($data)) {
-            throw new Exception($this->i18n->t('NORESOURCE'), Exception::NORESOURCE);
+            throw new Exception("CSV data must be a resource", Exception::NORESOURCE);
         }
         return $this->parse(new CsvResource($data), $options);
     }
@@ -175,7 +167,7 @@ class Parser
     {
         $options = array_merge($this->options, $options);
         if (!count($options['columns'])) {
-            throw new Exception($this->i18n->t('NOCOLUMN'), Exception::NOCOLUMN);
+            throw new Exception("No column configured in options", Exception::NOCOLUMN);
         }
         // there're two ways to handle no-enclosure: same as separator or 0x00
         if (!$options['enclosure']) {
@@ -298,8 +290,8 @@ class Parser
     private function getRow(array $row, int $index, array $columns, array $options) : array
     {
         $parsed = [];
-        if ($options['strictHeaders'] && count($row) !== count($columns)) {
-            throw new Exception(sprintf($this->i18n->t('DIFFCOLUMNS'), $index), Exception::DIFFCOLUMNS);
+        if ($options['strict'] && count($row) !== count($columns)) {
+            throw new Exception(sprintf("At line [%s], columns don't match headers", $index), Exception::DIFFCOLUMNS);
         }
         foreach ($columns as $meta) {
             $meta['type'] = 'column';
@@ -350,8 +342,8 @@ class Parser
         $max = count($csvHeaders);
         $headers = [];
         foreach ($optionsHeaders as $key => $header) {
-            if (($options['strictHeaders'] || $options['strictDefinedHeaders']) && !isset($csvHeaders[$key])) {
-                throw new Exception(sprintf($this->i18n->t('HEADERMISSING'), $key), Exception::HEADERMISSING);
+            if (in_array($header['name'], $options['required']) && !isset($csvHeaders[$key])) {
+                throw new Exception(sprintf("Header [%s] not found in CSV resource", $key), Exception::HEADERMISSING);
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key]['index'];
@@ -382,7 +374,7 @@ class Parser
             $data->rewind();
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
-            throw new Exception($this->i18n->t('EMPTY'), Exception::EMPTY);
+            throw new Exception("CSV data is empty", Exception::EMPTY);
         }
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
         $headers = [];
@@ -390,7 +382,7 @@ class Parser
             // remove carriage returns and surnumeral spaces
             $h = preg_replace('/\s\s+/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $h));
             if (isset($headers[$h])) {
-                throw new Exception(sprintf($this->i18n->t('HEADEREXISTS'), $h), Exception::HEADEREXISTS);
+                throw new Exception(sprintf("Header [%s] can't be the same for two columns", $h), Exception::HEADEREXISTS);
             }
             $headers[$h] = [
                 'csv' => $h,

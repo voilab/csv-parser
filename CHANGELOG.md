@@ -1,3 +1,11 @@
+## Release 3.0.0
+
+- removed i18n implementation. You have to manage translation with exception code
+- removed `strictHeaders` and `strictDefinedHeaders`
+- added `strict`, which checks if row has the same number of columns as defined
+- added `required` to define which column is required
+- changed tests to reflect these adaptations
+
 ## Release 2.0.1
 
 - changed interfaces names

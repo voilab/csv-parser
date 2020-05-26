@@ -9,8 +9,7 @@ final class StrictHeadersTest extends TestCase
     {
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
-            'strictHeaders' => true,
-            'strictDefinedHeaders' => false
+            'strict' => true
         ]);
         $this->file = __DIR__ . '/fixtures/csv-strict-headers.csv';
     }
@@ -27,25 +26,10 @@ final class StrictHeadersTest extends TestCase
         ]);
     }
 
-    public function testWrongHeader() : void
-    {
-        $this->expectExceptionCode(Exception::HEADERMISSING);
-        $result = $this->parser->fromFile($this->file, [
-            'columns' => [
-                'A' => function (string $data) {
-                    return (int) $data;
-                },
-                'C' => function (string $data) {
-                    return (int) $data;
-                }
-            ]
-        ]);
-    }
-
     public function testMissingHeaderIgnore() : void
     {
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'columns' => [
                 'A' => function (string $data) {
                     return (int) $data;
@@ -62,7 +46,7 @@ final class StrictHeadersTest extends TestCase
     public function testWrongHeaderIgnore() : void
     {
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'columns' => [
                 'C' => function (string $data) {
                     return $data;

@@ -16,7 +16,7 @@ final class ErrorTets extends TestCase
     {
         $this->expectExceptionMessage('row');
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 if ($meta['type'] === 'row') {
                     throw new \Exception($meta['type']);
@@ -35,7 +35,7 @@ final class ErrorTets extends TestCase
     public function testColumnSwallowError() : void
     {
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 return;
             },
@@ -52,7 +52,7 @@ final class ErrorTets extends TestCase
     {
         $this->expectExceptionMessage(4);
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 throw $e;
             },
@@ -76,7 +76,7 @@ final class ErrorTets extends TestCase
     {
         $this->expectExceptionMessage('reduce');
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 $this->assertNull($index);
                 throw $e;
@@ -101,7 +101,7 @@ final class ErrorTets extends TestCase
     {
         $this->expectExceptionMessage(4);
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 $this->assertNotNull($index);
                 throw $e;
