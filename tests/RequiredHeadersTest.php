@@ -3,21 +3,22 @@
 use PHPUnit\Framework\TestCase;
 use voilab\csv\Exception;
 
-final class StrictDefinedHeadersTest extends TestCase
+final class RequiredHeadersTest extends TestCase
 {
     protected function setUp() : void
     {
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
-            'strictHeaders' => false
+            'strict' => false
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-strict-defined-headers.csv';
+        $this->file = __DIR__ . '/fixtures/csv-required-headers.csv';
     }
 
-    public function testDefault() : void
+    public function testAbsent() : void
     {
         $this->expectExceptionCode(Exception::HEADERMISSING);
         $result = $this->parser->fromFile($this->file, [
+            'required' => ['C'],
             'columns' => [
                 'A' => function (string $data) { return $data; },
                 'C' => function (string $data) { return $data; }
@@ -25,22 +26,10 @@ final class StrictDefinedHeadersTest extends TestCase
         ]);
     }
 
-    public function testStrict() : void
-    {
-        $this->expectExceptionCode(Exception::HEADERMISSING);
-        $result = $this->parser->fromFile($this->file, [
-            'strictDefinedHeaders' => true,
-            'columns' => [
-                'A' => function (string $data) { return $data; },
-                'C' => function (string $data) { return $data; }
-            ]
-        ]);
-    }
-
-    public function testNotStrict() : void
+    public function testPresent() : void
     {
         $result = $this->parser->fromFile($this->file, [
-            'strictDefinedHeaders' => false,
+            'required' => ['A'],
             'columns' => [
                 'A' => function (string $data) { return $data; },
                 'C' => function (string $data) { return $data; }
@@ -49,6 +38,22 @@ final class StrictDefinedHeadersTest extends TestCase
         $expect = [
             [ 'A' => 4, 'C' => '' ],
             [ 'A' => 9, 'C' => '' ]
+        ];
+        $this->assertEquals($result, $expect);
+    }
+
+    public function testPresentAlias() : void
+    {
+        $result = $this->parser->fromFile($this->file, [
+            'required' => ['aliased'],
+            'columns' => [
+                'A as aliased' => function (string $data) { return $data; },
+                'C' => function (string $data) { return $data; }
+            ]
+        ]);
+        $expect = [
+            [ 'aliased' => 4, 'C' => '' ],
+            [ 'aliased' => 9, 'C' => '' ]
         ];
         $this->assertEquals($result, $expect);
     }

@@ -49,14 +49,14 @@ final class BadFormatTest extends TestCase
     {
         $this->expectExceptionCode(Exception::DIFFCOLUMNS);
         $result = $this->parser->fromFile($this->dir . 'csv-badformat-buggy.csv', [
-            'strictHeaders' => true
+            'strict' => true
         ]);
     }
 
     public function testBuggyLoose() : void
     {
         $result = $this->parser->fromFile($this->dir . 'csv-badformat-buggy.csv', [
-            'strictHeaders' => false,
+            'strict' => false,
             'columns' => [
                 'A' => function (string $data) {
                     return $data;

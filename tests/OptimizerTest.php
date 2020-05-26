@@ -15,7 +15,7 @@ final class OptimizerTest extends TestCase
     public function testOptimizer() : void
     {
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'columns' => [
                 'A' => new \voilab\csv\Optimizer(
                     function (string $data) {
@@ -44,7 +44,7 @@ final class OptimizerTest extends TestCase
     public function testOptimizerMissing() : void
     {
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'columns' => [
                 'A' => new \voilab\csv\Optimizer(
                     function (string $data) {
@@ -71,7 +71,7 @@ final class OptimizerTest extends TestCase
     {
         $this->expectExceptionMessage('data 4 not found');
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'columns' => [
                 'A' => new \voilab\csv\Optimizer(
                     function (string $data) {
@@ -91,7 +91,7 @@ final class OptimizerTest extends TestCase
     public function testOptimizerInsideOther() : void
     {
         $result = $this->parser->fromFile($this->file, [
-            'strictHeaders' => false,
+            'strict' => false,
             'columns' => [
                 'A' => new \voilab\csv\Optimizer(
                     function (string $data) { return $data; },
