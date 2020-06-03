@@ -1,11 +1,13 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class SeekTest extends TestCase
+class Seek extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
             'columns' => [
@@ -17,17 +19,21 @@ final class SeekTest extends TestCase
                 }
             ]
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-seek.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testSeek() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'start' => 0,
             'size' => 3
         ]);
 
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'size' => 3,
             'seek' => $this->parser->getPointerPosition()
         ]);
@@ -42,12 +48,12 @@ final class SeekTest extends TestCase
 
     public function testSeekWithStartUnsync() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'start' => 0,
             'size' => 3
         ]);
 
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'size' => 1,
             'seek' => $this->parser->getPointerPosition(),
             'onRowParsed' => function ($data, $index) {
@@ -64,7 +70,7 @@ final class SeekTest extends TestCase
 
     public function testSeekWithStartSync() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'start' => 0,
             'size' => 3
         ]);
@@ -75,7 +81,7 @@ final class SeekTest extends TestCase
         ];
         $this->assertEquals($result, $expect);
 
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'size' => 1,
             'start' => 3,
             'seek' => $this->parser->getPointerPosition(),
@@ -95,12 +101,12 @@ final class SeekTest extends TestCase
 
     public function testSeekPointerOverflow() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'start' => 0,
             'size' => 3
         ]);
 
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'size' => 3,
             'seek' => 500000
         ]);

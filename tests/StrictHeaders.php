@@ -1,23 +1,29 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 use voilab\csv\Exception;
 
-final class StrictHeadersTest extends TestCase
+class StrictHeaders extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
             'strict' => true
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-strict-headers.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testMissingHeader() : void
     {
         $this->expectExceptionCode(Exception::DIFFCOLUMNS);
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'columns' => [
                 'A' => function (string $data) {
                     return (int) $data;
@@ -28,7 +34,7 @@ final class StrictHeadersTest extends TestCase
 
     public function testMissingHeaderIgnore() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'columns' => [
                 'A' => function (string $data) {
@@ -45,7 +51,7 @@ final class StrictHeadersTest extends TestCase
 
     public function testWrongHeaderIgnore() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'columns' => [
                 'C' => function (string $data) {

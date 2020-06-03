@@ -1,4 +1,5 @@
 <?php
+namespace voilab\csv\test\stream;
 
 use PHPUnit\Framework\TestCase;
 use GuzzleHttp\Client;
@@ -22,7 +23,7 @@ final class StreamTest extends TestCase
                 }
             ]
         ]);
-        $this->content = file_get_contents(__DIR__ . '/fixtures/csv-parser.csv');
+        $this->content = file_get_contents(__DIR__ . '/../fixtures/csv-parser.csv');
     }
 
     public function testPsrStream() : void

@@ -1,11 +1,13 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class StartSizeTest extends TestCase
+class StartSize extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
             'columns' => [
@@ -17,12 +19,16 @@ final class StartSizeTest extends TestCase
                 }
             ]
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-start-size.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testStartBegining() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'start' => 0,
             'size' => 2
         ]);
@@ -35,7 +41,7 @@ final class StartSizeTest extends TestCase
 
     public function testStartMiddle() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'start' => 5,
             'size' => 3
         ]);
@@ -49,7 +55,7 @@ final class StartSizeTest extends TestCase
 
     public function testStartEnding() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'start' => 8,
             'size' => 3
         ]);

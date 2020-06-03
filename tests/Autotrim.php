@@ -1,11 +1,13 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class AutotrimTest extends TestCase
+class Autotrim extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
             'columns' => [
@@ -17,12 +19,16 @@ final class AutotrimTest extends TestCase
                 }
             ]
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-autotrim.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testTrimDefault() : void
     {
-        $result = $this->parser->fromFile($this->file);
+        $result = $this->parser->parse($this->resource);
         $expect = [
             [ 'A' => '4', 'B' => 'hello' ],
             [ 'A' => '9', 'B' => 'world' ]
@@ -32,7 +38,7 @@ final class AutotrimTest extends TestCase
 
     public function testTrimActive() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'autotrim' => true
         ]);
         $expect = [
@@ -44,7 +50,7 @@ final class AutotrimTest extends TestCase
 
     public function testTrimInactive() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'autotrim' => false
         ]);
         $expect = [

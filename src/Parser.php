@@ -29,6 +29,8 @@ class Parser
         'length' => 0,
         // PSR stream
         'lineEnding' => "\n",
+        // iterator or arrays
+        'metadata' => [],
         // headers
         'headers' => true,
         'strict' => true,
@@ -95,6 +97,18 @@ class Parser
     }
 
     /**
+     * Change option value
+     *
+     * @param string $key The option key
+     * @param mixed $value the new value for this option
+     * @return void
+     */
+    public function setOption($key, $value)
+    {
+        $this->options[$key] = $value;
+    }
+
+    /**
      * Parse a CSV from a file
      *
      * @param string $file the CSV path and filename
@@ -104,7 +118,7 @@ class Parser
     public function fromFile(string $file, array $options = []) : array
     {
         if (!file_exists($file)) {
-            throw new Exception(sprintf("File [%s] doesn't exist", $file), Exception::NOFILE);
+            throw new \RuntimeException(sprintf("File [%s] doesn't exist", $file));
         }
         $resource = fopen($file, 'r');
         $result = $this->parse(new CsvResource($resource), $options);
@@ -139,7 +153,7 @@ class Parser
     public function fromResource($data, array $options = []) : array
     {
         if (!is_resource($data)) {
-            throw new Exception("CSV data must be a resource", Exception::NORESOURCE);
+            throw new \RuntimeException('CSV data must be a resource');
         }
         return $this->parse(new CsvResource($data), $options);
     }
@@ -157,6 +171,18 @@ class Parser
     }
 
     /**
+     * Parse an array or an iterable object
+     *
+     * @param iterable $data the CSV data array
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function fromIterable(iterable $data, array $options = []) : array
+    {
+        return $this->parse(new CsvIterable($data, $options), $options);
+    }
+
+    /**
      * Parse a stream that implements the StreamInterface
      *
      * @param CsvInterface $data the CSV data resource
@@ -167,7 +193,16 @@ class Parser
     {
         $options = array_merge($this->options, $options);
         if (!count($options['columns'])) {
-            throw new Exception("No column configured in options", Exception::NOCOLUMN);
+            $e = new Exception("No column configured in options", Exception::NOCOLUMN);
+            if (is_callable($options['onError'])) {
+                $meta = [
+                    'type' => 'init',
+                    'code' => Exception::NOCOLUMN
+                ];
+                return $options['onError']($e, null, $meta, $options);
+            } else {
+                throw $e;
+            }
         }
         // there're two ways to handle no-enclosure: same as separator or 0x00
         if (!$options['enclosure']) {
@@ -291,7 +326,17 @@ class Parser
     {
         $parsed = [];
         if ($options['strict'] && count($row) !== count($columns)) {
-            throw new Exception(sprintf("At line [%s], columns don't match headers", $index), Exception::DIFFCOLUMNS);
+            $e = new Exception(sprintf("At line [%s], columns don't match headers", $index), Exception::DIFFCOLUMNS);
+            if (is_callable($options['onError'])) {
+                $meta = [
+                    'type' => 'init',
+                    'code' => Exception::DIFFCOLUMNS,
+                    'key' => $index
+                ];
+                return $options['onError']($e, $index, $meta, $options);
+            } else {
+                throw $e;
+            }
         }
         foreach ($columns as $meta) {
             $meta['type'] = 'column';
@@ -343,7 +388,17 @@ class Parser
         $headers = [];
         foreach ($optionsHeaders as $key => $header) {
             if (in_array($header['name'], $options['required']) && !isset($csvHeaders[$key])) {
-                throw new Exception(sprintf("Header [%s] not found in CSV resource", $key), Exception::HEADERMISSING);
+                $e = new Exception(sprintf("Header [%s] not found in CSV resource", $key), Exception::HEADERMISSING);
+                if (is_callable($options['onError'])) {
+                    $meta = [
+                        'type' => 'init',
+                        'code' => Exception::HEADERMISSING,
+                        'key' => $key
+                    ];
+                    return $options['onError']($e, null, $meta, $options);
+                } else {
+                    throw $e;
+                }
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key]['index'];
@@ -369,12 +424,22 @@ class Parser
      */
     private function getCsvHeaders(CsvInterface $data, array $options) : array
     {
+        $data->rewind();
         $columns = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
         if (!$options['headers']) {
             $data->rewind();
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
-            throw new Exception("CSV data is empty", Exception::EMPTY);
+            $e = new Exception("CSV data is empty", Exception::EMPTY);
+            if (is_callable($options['onError'])) {
+                $meta = [
+                    'type' => 'init',
+                    'code' => Exception::EMPTY
+                ];
+                return $options['onError']($e, null, $meta, $options);
+            } else {
+                throw $e;
+            }
         }
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
         $headers = [];
@@ -382,7 +447,17 @@ class Parser
             // remove carriage returns and surnumeral spaces
             $h = preg_replace('/\s\s+/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $h));
             if (isset($headers[$h])) {
-                throw new Exception(sprintf("Header [%s] can't be the same for two columns", $h), Exception::HEADEREXISTS);
+                $e = new Exception(sprintf("Header [%s] can't be the same for two columns", $h), Exception::HEADEREXISTS);
+                if (is_callable($options['onError'])) {
+                    $meta = [
+                        'type' => 'init',
+                        'code' => Exception::HEADEREXISTS,
+                        'key' => $h
+                    ];
+                    return $options['onError']($e, null, $meta, $options);
+                } else {
+                    throw $e;
+                }
             }
             $headers[$h] = [
                 'csv' => $h,

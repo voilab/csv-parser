@@ -1,21 +1,27 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class MissingHeadersTest extends TestCase
+class MissingHeaders extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
             'strict' => false
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-missing-headers.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testShuffle() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'columns' => [
                 'D' => function (string $data) { return $data; },
                 'A' => function (string $data) { return $data; },
@@ -29,7 +35,7 @@ final class MissingHeadersTest extends TestCase
 
     public function testShuffleWithIgnore() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'columns' => [
                 'D' => function (string $data) { return $data; },
                 'C' => function (string $data) { return $data; },
@@ -42,7 +48,7 @@ final class MissingHeadersTest extends TestCase
 
     public function testShuffleWithMissing() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'columns' => [
                 'D' => function (string $data) { return $data; },
                 'C' => function (string $data) { return $data; },

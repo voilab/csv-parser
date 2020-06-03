@@ -1,21 +1,27 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class ErrorTets extends TestCase
+class Error extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';'
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-parser.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testColumnError() : void
     {
         $this->expectExceptionMessage('row');
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 if ($meta['type'] === 'row') {
@@ -34,7 +40,7 @@ final class ErrorTets extends TestCase
 
     public function testColumnSwallowError() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 return;
@@ -51,7 +57,7 @@ final class ErrorTets extends TestCase
     public function testOptimizerError() : void
     {
         $this->expectExceptionMessage(4);
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 throw $e;
@@ -75,7 +81,7 @@ final class ErrorTets extends TestCase
     public function testOptimizerReduceError() : void
     {
         $this->expectExceptionMessage('reduce');
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 $this->assertNull($index);
@@ -100,7 +106,7 @@ final class ErrorTets extends TestCase
     public function testOptimizerReduceAbsentError() : void
     {
         $this->expectExceptionMessage(4);
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'onError' => function ($e, $index, $meta) {
                 $this->assertNotNull($index);

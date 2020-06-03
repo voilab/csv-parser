@@ -1,11 +1,13 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class OnBeforeColumnParse extends TestCase
+class OnBeforeColumnParse extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
             'columns' => [
@@ -17,12 +19,16 @@ final class OnBeforeColumnParse extends TestCase
                 }
             ]
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-on-before-column-parse.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testAddPrefix() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'onBeforeColumnParse' => function (string $data) {
                 return 'prefix ' . $data;
             }
@@ -36,7 +42,7 @@ final class OnBeforeColumnParse extends TestCase
 
     public function testAddPrefixToFirstColumn() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'onBeforeColumnParse' => function (string $data, $index, $col) {
                 if ($col['name'] === 'A') {
                     return 'prefix ' . $data;
@@ -53,7 +59,7 @@ final class OnBeforeColumnParse extends TestCase
 
     public function testAddPrefixIndex() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'onBeforeColumnParse' => function (string $data, $index) {
                 return $index . ' ' . $data;
             }

@@ -70,9 +70,6 @@ class CsvResource implements CsvInterface
 
     public function __toString() : string
     {
-        if (!$this->resource) {
-            return '';
-        }
         try {
             $this->rewind();
             return $this->getContents();
