@@ -1,23 +1,29 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 use voilab\csv\Exception;
 
-final class RequiredHeadersTest extends TestCase
+class RequiredHeaders extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';',
             'strict' => false
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-required-headers.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testAbsent() : void
     {
         $this->expectExceptionCode(Exception::HEADERMISSING);
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'required' => ['C'],
             'columns' => [
                 'A' => function (string $data) { return $data; },
@@ -28,7 +34,7 @@ final class RequiredHeadersTest extends TestCase
 
     public function testPresent() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'required' => ['A'],
             'columns' => [
                 'A' => function (string $data) { return $data; },
@@ -44,7 +50,7 @@ final class RequiredHeadersTest extends TestCase
 
     public function testPresentAlias() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'required' => ['aliased'],
             'columns' => [
                 'A as aliased' => function (string $data) { return $data; },

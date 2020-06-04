@@ -55,6 +55,9 @@ $result = $parser->fromFile($file = '/path/file.csv', $options = []);
 // or with a raw resource (fopen, fsockopen, php://memory, etc)
 $result = $parser->fromResource($resource, $options = []);
 
+// or with an array or an Iterator interface
+$result = $parser->fromIterable($array = [['A', 'B'], ['1', 'test']], $options = []);
+
 // or with a PSR stream interface (ex. HTTP response message body)
 $response = $someHttpClient->request('GET', '/');
 $result = $parser->fromStream($response->getBody(), $options = []);
@@ -104,6 +107,9 @@ $parser->fromFile('file.csv', [
 
     // PSR stream
     'lineEnding' => "\n",
+
+    // array or iterable
+    'metadata' => [],
 
     // headers management
     'headers' => true,
@@ -173,6 +179,7 @@ https://php.net/fgetcsv and https://php.net/str_getcsv
 | escape | `string` | `\\` | `fgetcsv` the escape string |
 | length | `int` | `0` | `fgetcsv` the line length |
 | lineEnding | `string` | `\n` | Used with PSR streams to define what is a line ending. You must set a length, so it's possible to read a line |
+| metadata | `array` | `[]` | Resource metadata. Only used with iterables or arrays |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
 | strict | `bool` | `false` | Tells if columns defined in [columns] option must match exactly the number of columns in CSV resource |
 | required | `array` | `[]` | Columns defined in [columns] options that must be present in CSV resource (if aliased, must be the column alias) |
@@ -538,6 +545,33 @@ if (count($errors)) {
 }
 ```
 
+### Initialization errors
+
+Some errors are thrown before any line is parsed. You have to take this into
+account.
+
+```php
+$data = $parser->fromFile('file.csv', [
+    'onError' => function (\Exception $e, int $index, array $meta) {
+        if ($meta['type'] === 'init') {
+            // called during initialization.
+            var_dump($meta['code']); // \voilab\csv\Exception code
+            var_dump($meta['key']); // for errors with specific key
+
+            if ($meta['code'] === \voilab\csv\Exception::HEADERMISSING) {
+                throw new \Exception(sprintf("La colonne [%s] est obligatoire", $meta['key']));
+            }
+        }
+        throw $e;
+    }
+]);
+```
+
+### Error and internationalization (i18n)
+
+If you want to translate error messages, you can use the `onError` function
+with `meta['type'] === 'init'` to throw the translated message.
+
 ## Working with database, column optimization
 
 When parsing large set of data, if one column is, for example, a user ID, it's
@@ -660,6 +694,7 @@ Array (
 
 + with PSR streams, carriage returns are not supported in headers and in cells
 content
++ with PSR streams, seek is not available
 
 ## Testing
 ```

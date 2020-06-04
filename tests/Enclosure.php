@@ -1,20 +1,26 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class EnclosureTest extends TestCase
+class Enclosure extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ','
         ]);
-        $this->file = __DIR__ . '/fixtures/csv-enclosure.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testEnclosure() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'columns' => [
                 'A' => function (string $data) {
                     return (int) $data;
@@ -33,7 +39,7 @@ final class EnclosureTest extends TestCase
 
     public function testEnclosureDisabled() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'enclosure' => '',
             'columns' => [
                 '"A" as A' => function (string $data) {

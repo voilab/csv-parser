@@ -1,9 +1,10 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 use voilab\csv\Exception;
 
-final class BadFormatTest extends TestCase
+class BadFormat extends TestCase
 {
     protected function setUp() : void
     {
@@ -18,44 +19,37 @@ final class BadFormatTest extends TestCase
                 }
             ]
         ]);
-        $this->dir = __DIR__ . '/fixtures/';
+        $this->dir = __DIR__ . '/fixtures';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testDoubleHeaders() : void
     {
         $this->expectExceptionCode(Exception::HEADEREXISTS);
-        $result = $this->parser->fromFile($this->dir . 'csv-badformat-double-header.csv');
+        $result = $this->parser->parse($this->resource);
     }
 
     public function testEmpty() : void
     {
         $this->expectExceptionCode(Exception::EMPTY);
-        $result = $this->parser->fromFile($this->dir . 'csv-badformat-empty.csv');
-    }
-
-    public function testNoFile() : void
-    {
-        $this->expectExceptionCode(Exception::NOFILE);
-        $result = $this->parser->fromFile($this->dir . 'csv-badformat-nofile.csv');
-    }
-
-    public function testNoResource() : void
-    {
-        $this->expectExceptionCode(Exception::NORESOURCE);
-        $result = $this->parser->fromResource('test');
+        $result = $this->parser->parse($this->resource);
     }
 
     public function testBuggyStrict() : void
     {
         $this->expectExceptionCode(Exception::DIFFCOLUMNS);
-        $result = $this->parser->fromFile($this->dir . 'csv-badformat-buggy.csv', [
+        $result = $this->parser->parse($this->resource, [
             'strict' => true
         ]);
     }
 
     public function testBuggyLoose() : void
     {
-        $result = $this->parser->fromFile($this->dir . 'csv-badformat-buggy.csv', [
+        $result = $this->parser->parse($this->resource, [
             'strict' => false,
             'columns' => [
                 'A' => function (string $data) {

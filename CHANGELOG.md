@@ -1,3 +1,11 @@
+## Release 3.1.0
+
+- debug streams with no header
+- added arrays and iterables management
+- added `metadata` option
+- changed errors with headers. They are propagated in `onError` option if available.
+- changed tests to better reflect all CSV interface implementations
+
 ## Release 3.0.0
 
 - removed i18n implementation. You have to manage translation with exception code

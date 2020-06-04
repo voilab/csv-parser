@@ -1,21 +1,26 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class NoHeaderTest extends TestCase
+class Headers extends TestCase
 {
     protected function setUp() : void
     {
+        $this->dir = __DIR__ . '/fixtures';
         $this->parser = new \voilab\csv\Parser([
             'delimiter' => ';'
         ]);
-        $this->dir = __DIR__ . '/fixtures';
-        $this->file = __DIR__ . '/fixtures/csv-no-header.csv';
+    }
+
+    protected function tearDown(): void
+    {
+        $this->resource->close();
     }
 
     public function testNoHeader() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'headers' => false,
             'columns' => [
                 0 => function (string $data) {
@@ -35,7 +40,7 @@ final class NoHeaderTest extends TestCase
 
     public function testNoHeaderWithAlias() : void
     {
-        $result = $this->parser->fromFile($this->file, [
+        $result = $this->parser->parse($this->resource, [
             'headers' => false,
             'columns' => [
                 '0 as id' => function (string $data) {
@@ -55,7 +60,7 @@ final class NoHeaderTest extends TestCase
 
     public function testCarriageReturnHeaders() : void
     {
-        $result = $this->parser->fromFile($this->dir . '/csv-carriagereturn-headers.csv', [
+        $result = $this->parser->parse($this->resource, [
             'delimiter' => ',',
             'enclosure' => '"',
             'columns' => [

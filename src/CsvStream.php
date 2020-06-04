@@ -54,6 +54,7 @@ class CsvStream implements CsvInterface
 
     public function detach()
     {
+        $this->buffer = '';
         $this->resource->detach();
     }
 
@@ -84,6 +85,7 @@ class CsvStream implements CsvInterface
 
     public function rewind()
     {
+        $this->buffer = '';
         $this->resource->rewind();
     }
 

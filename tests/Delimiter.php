@@ -1,8 +1,9 @@
 <?php
+namespace voilab\csv\test;
 
 use PHPUnit\Framework\TestCase;
 
-final class DelimiterTest extends TestCase
+class Delimiter extends TestCase
 {
     protected function setUp() : void
     {
@@ -16,16 +17,21 @@ final class DelimiterTest extends TestCase
                 }
             ]
         ]);
-        $this->csv = file_get_contents(__DIR__ . '/fixtures/csv-delimiter.csv');
+        $this->dir = __DIR__ . '/fixtures';
         $this->expect = [
             [ 'A' => 4, 'B' => 'hello' ],
             [ 'A' => 9, 'B' => 'world' ]
         ];
     }
 
+    protected function tearDown(): void
+    {
+        $this->resource->close();
+    }
+
     public function testSemiColon() : void
     {
-        $result = $this->parser->fromString($this->csv, [
+        $result = $this->parser->parse($this->resource, [
             'delimiter' => ';'
         ]);
         $this->assertEquals($result, $this->expect);
@@ -33,8 +39,7 @@ final class DelimiterTest extends TestCase
 
     public function testComma() : void
     {
-        $csv = str_replace(';' , ',', $this->csv);
-        $result = $this->parser->fromString($csv, [
+        $result = $this->parser->parse($this->resource, [
             'delimiter' => ','
         ]);
         $this->assertEquals($result, $this->expect);
@@ -42,8 +47,7 @@ final class DelimiterTest extends TestCase
 
     public function testTab() : void
     {
-        $csv = str_replace(';' , "\t", $this->csv);
-        $result = $this->parser->fromString($csv, [
+        $result = $this->parser->parse($this->resource, [
             'delimiter' => "\t"
         ]);
         $this->assertEquals($result, $this->expect);
