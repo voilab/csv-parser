@@ -194,15 +194,8 @@ class Parser
         $options = array_merge($this->options, $options);
         if (!count($options['columns'])) {
             $e = new Exception("No column configured in options", Exception::NOCOLUMN);
-            if (is_callable($options['onError'])) {
-                $meta = [
-                    'type' => 'init',
-                    'code' => Exception::NOCOLUMN
-                ];
-                return $options['onError']($e, null, $meta, $options);
-            } else {
-                throw $e;
-            }
+            $meta = [ 'type' => 'init' ];
+            $this->checkError($e, null, $meta, $options);
         }
         // there're two ways to handle no-enclosure: same as separator or 0x00
         if (!$options['enclosure']) {
@@ -240,12 +233,8 @@ class Parser
                 }
                 $parsed[] = $rowData;
             } catch (\Exception $e) {
-                if (is_callable($options['onError'])) {
-                    $info = [ 'type' => 'row' ];
-                    $options['onError']($e, $index, $info, $options);
-                } else {
-                    throw $e;
-                }
+                $meta = [ 'type' => 'row' ];
+                $this->checkError($e, $index, $meta, $options);
             }
             $i++;
         }
@@ -278,35 +267,24 @@ class Parser
                 continue;
             }
             $columnData = array_column($data, $key);
+            $meta['type'] = 'reducer';
             try {
-                $meta['type'] = 'reducer';
                 $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $data, $result, $meta, $options);
-                // set the reduce result in the main data array
-                foreach ($data as $i => $row) {
-                    $index = $i + ($options['headers'] ? 2 : 1);
-                    $value = $data[$i][$key];
-                    $meta['type'] = 'optimizer';
-                    try {
-                        $data[$i][$key] = isset($result[$key][$value])
-                            ? $result[$key][$value]
-                            : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
-
-                    } catch (\Exception $e) {
-                        if (is_callable($options['onError'])) {
-                            $options['onError']($e, $index, $meta, $options);
-                        } else {
-                            throw $e;
-                        }
-                    }
-                }
             } catch (\Exception $e) {
-                if ($meta['type'] === 'optimizer') {
-                    throw $e;
-                }
-                if (is_callable($options['onError'])) {
-                    $options['onError']($e, null, $meta, $options);
-                } else {
-                    throw $e;
+                $this->checkError($e, null, $meta, $options);
+            }
+            // set the reduce result in the main data array
+            foreach ($data as $i => $row) {
+                $index = $i + ($options['headers'] ? 2 : 1);
+                $value = $data[$i][$key];
+                $meta['type'] = 'optimizer';
+                try {
+                    $data[$i][$key] = isset($result[$key][$value])
+                        ? $result[$key][$value]
+                        : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
+
+                } catch (\Exception $e) {
+                    $this->checkError($e, $index, $meta, $options);
                 }
             }
         }
@@ -327,16 +305,8 @@ class Parser
         $parsed = [];
         if ($options['strict'] && count($row) !== count($columns)) {
             $e = new Exception(sprintf("At line [%s], columns don't match headers", $index), Exception::DIFFCOLUMNS);
-            if (is_callable($options['onError'])) {
-                $meta = [
-                    'type' => 'init',
-                    'code' => Exception::DIFFCOLUMNS,
-                    'key' => $index
-                ];
-                return $options['onError']($e, $index, $meta, $options);
-            } else {
-                throw $e;
-            }
+            $meta = [ 'type' => 'init', 'key' => $index ];
+            $this->checkError($e, $index, $meta, $options);
         }
         foreach ($columns as $meta) {
             $meta['type'] = 'column';
@@ -361,12 +331,7 @@ class Parser
                     : $col;
 
             } catch (\Exception $e) {
-                if (is_callable($options['onError'])) {
-                    // user will decide what to do with the error
-                    $options['onError']($e, $index, $meta, $options);
-                } else {
-                    throw $e;
-                }
+                $this->checkError($e, $index, $meta, $options);
             }
         }
         return $parsed;
@@ -389,16 +354,8 @@ class Parser
         foreach ($optionsHeaders as $key => $header) {
             if (in_array($header['name'], $options['required']) && !isset($csvHeaders[$key])) {
                 $e = new Exception(sprintf("Header [%s] not found in CSV resource", $key), Exception::HEADERMISSING);
-                if (is_callable($options['onError'])) {
-                    $meta = [
-                        'type' => 'init',
-                        'code' => Exception::HEADERMISSING,
-                        'key' => $key
-                    ];
-                    return $options['onError']($e, null, $meta, $options);
-                } else {
-                    throw $e;
-                }
+                $meta = [ 'type' => 'init', 'key' => $key ];
+                $this->checkError($e, null, $meta, $options);
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key]['index'];
@@ -431,15 +388,8 @@ class Parser
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
             $e = new Exception("CSV data is empty", Exception::EMPTY);
-            if (is_callable($options['onError'])) {
-                $meta = [
-                    'type' => 'init',
-                    'code' => Exception::EMPTY
-                ];
-                return $options['onError']($e, null, $meta, $options);
-            } else {
-                throw $e;
-            }
+            $meta = [ 'type' => 'init' ];
+            $this->checkError($e, null, $meta, $options);
         }
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
         $headers = [];
@@ -448,16 +398,8 @@ class Parser
             $h = preg_replace('/\s\s+/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $h));
             if (isset($headers[$h])) {
                 $e = new Exception(sprintf("Header [%s] can't be the same for two columns", $h), Exception::HEADEREXISTS);
-                if (is_callable($options['onError'])) {
-                    $meta = [
-                        'type' => 'init',
-                        'code' => Exception::HEADEREXISTS,
-                        'key' => $h
-                    ];
-                    return $options['onError']($e, null, $meta, $options);
-                } else {
-                    throw $e;
-                }
+                $meta = [ 'type' => 'init', 'key' => $h ];
+                $this->checkError($e, null, $meta, $options);
             }
             $headers[$h] = [
                 'csv' => $h,
@@ -489,5 +431,24 @@ class Parser
             ];
         }
         return $aliased;
+    }
+
+    /**
+     * Manage error if the onError option is defined
+     *
+     * @param \Exception $e the exception that occured
+     * @param int|null $index current index or null
+     * @param array $meta metadata for this exception
+     * @param array $options configuration options for parsing
+     * @return void
+     */
+    private function checkError(\Exception $e, $index, array $meta, array $options)
+    {
+        if (is_callable($options['onError'])) {
+            // user will decide what to do with the error
+            $options['onError']($e, $index, $meta, $options);
+        } else {
+            throw $e;
+        }
     }
 }

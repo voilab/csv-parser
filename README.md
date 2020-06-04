@@ -373,7 +373,7 @@ $result = $parser->fromString($str, [
         '0 as id' => function (string $data) {
             return (int) $data;
         },
-        '1 content' => function (string $data) {
+        '1 as content' => function (string $data) {
             return ucfirst($data);
         }
     ]
@@ -555,10 +555,8 @@ $data = $parser->fromFile('file.csv', [
     'onError' => function (\Exception $e, int $index, array $meta) {
         if ($meta['type'] === 'init') {
             // called during initialization.
-            var_dump($meta['code']); // \voilab\csv\Exception code
             var_dump($meta['key']); // for errors with specific key
-
-            if ($meta['code'] === \voilab\csv\Exception::HEADERMISSING) {
+            if ($e->getCode() === \voilab\csv\Exception::HEADERMISSING) {
                 throw new \Exception(sprintf("La colonne [%s] est obligatoire", $meta['key']));
             }
         }

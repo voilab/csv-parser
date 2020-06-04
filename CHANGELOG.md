@@ -1,3 +1,7 @@
+## Release 3.1.1
+
+- changed refactoring of error management
+
 ## Release 3.1.0
 
 - debug streams with no header
