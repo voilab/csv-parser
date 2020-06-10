@@ -12,12 +12,6 @@ class Parser
     const COLUMNALIAS = ' as ';
 
     /**
-     * Last seek position in the resource
-     * @var int
-     */
-    private $pointerPos;
-
-    /**
      * Default options used for parsing CSV
      * @var array
      */
@@ -27,6 +21,7 @@ class Parser
         'enclosure' => '"',
         'escape' => '\\',
         'length' => 0,
+        'autoDetectLn' => null,
         // PSR stream
         'lineEnding' => "\n",
         // iterator or arrays
@@ -53,11 +48,11 @@ class Parser
     /**
      * Get header name with alias. Produce "initialHeader as alias"
      *
-     * @param string $csvHeader the csv header name
+     * @param string|int $csvHeader the csv header name
      * @param string $alias the alias of this header
      * @return string the column name
      */
-    public static function alias($csvHeader, $alias)
+    public static function alias($csvHeader, string $alias) : string
     {
         return $csvHeader . static::COLUMNALIAS . $alias;
     }
@@ -73,39 +68,28 @@ class Parser
     }
 
     /**
-     * Set automatic detection for line endings, to deal with Mac line endings
-     *
-     * @param bool $value set or unset auto detect line endings
-     * @return self
-     */
-    public function autoDetectLineEndings($value) : self
-    {
-        ini_set('auto_detect_line_endings', (bool) $value);
-        return $this;
-    }
-
-    /**
-     * Return last position parsed of the resource, if there's a [size] option.
-     * This value can be passed to [seek] option to start exactely where it
-     * ended.
-     *
-     * @return int
-     */
-    public function getPointerPosition() : int
-    {
-        return $this->pointerPos ?: 0;
-    }
-
-    /**
-     * Change option value
+     * Change default option value
      *
      * @param string $key The option key
      * @param mixed $value the new value for this option
      * @return void
      */
-    public function setOption($key, $value)
+    public function setOption(string $key, $value)
     {
         $this->options[$key] = $value;
+    }
+
+    /**
+     * Return default option value or all default options array
+     *
+     * @param string $key The option key
+     * @return array|mixed|null one value or the whole options array
+     */
+    public function getOption(string $key = null)
+    {
+        return $key !== null
+            ? (isset($this->options[$key]) ? $this->options[$key] : null)
+            : $this->options;
     }
 
     /**
@@ -117,12 +101,8 @@ class Parser
      */
     public function fromFile(string $file, array $options = []) : array
     {
-        if (!file_exists($file)) {
-            throw new \RuntimeException(sprintf("File [%s] doesn't exist", $file));
-        }
-        $resource = fopen($file, 'r');
-        $result = $this->parse(new CsvResource($resource), $options);
-        fclose($resource);
+        $result = $this->parse($r = new CsvFile($file, $options), $options);
+        $r->close();
         return $result;
     }
 
@@ -135,11 +115,8 @@ class Parser
      */
     public function fromString(string $data, array $options = []) : array
     {
-        $resource = fopen('php://temp', 'r+');
-        fwrite($resource, $data);
-        rewind($resource);
-        $result = $this->parse(new CsvResource($resource), $options);
-        fclose($resource);
+        $result = $this->parse($r = new CsvString($data, $options), $options);
+        $r->close();
         return $result;
     }
 
@@ -152,10 +129,7 @@ class Parser
      */
     public function fromResource($data, array $options = []) : array
     {
-        if (!is_resource($data)) {
-            throw new \RuntimeException('CSV data must be a resource');
-        }
-        return $this->parse(new CsvResource($data), $options);
+        return $this->parse(new CsvResource($data, $options), $options);
     }
 
     /**
@@ -201,6 +175,9 @@ class Parser
         if (!$options['enclosure']) {
             $options['enclosure'] = 0x00;
         }
+        if ($options['autoDetectLn'] !== null) {
+            ini_set('auto_detect_line_endings', (bool) $options['autoDetectLn']);
+        }
 
         $columns = $this->getColumns($data, $options);
         // seek directly at the right place
@@ -208,13 +185,13 @@ class Parser
             $data->seek($options['seek']);
         }
 
+        // if seek and start are defined, we can set the starting point
+        // to what is defined
+        $i = $options['seek'] && $options['start']
+            ? $options['start']
+            : 0;
+
         $parsed = [];
-        $i = 0;
-        if ($options['seek'] && $options['start']) {
-            // if seek and start are defined, we can set the starting point
-            // to what is defined
-            $i = $options['start'];
-        }
         while (
             (!$options['size'] || $i < $options['size'] + $options['start']) &&
             false !== ($row = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']))
@@ -238,7 +215,6 @@ class Parser
             }
             $i++;
         }
-        $this->pointerPos = $data->tell();
         if (!count($parsed)) {
             return $parsed;
         }

@@ -1,3 +1,10 @@
+## Release 4.0.0
+
+- Removed unused exception codes
+- Added CsvFile and CsvString implementations
+- Changed the way the seek position is fetched
+- Changed the way `auto_detect_line_endings` is called
+
 ## Release 3.1.1
 
 - changed refactoring of error management

@@ -27,6 +27,12 @@ class CsvResource implements CsvInterface
     private $resource;
 
     /**
+     * Options array
+     * @var array
+     */
+    private $options = [];
+
+    /**
      * File mode hash
      * @var array
      */
@@ -47,12 +53,14 @@ class CsvResource implements CsvInterface
      * Resource stream constructor
      *
      * @param resource $data
+     * @param array $options the options array
      */
-    public function __construct($data)
+    public function __construct($data, array $options = [])
     {
         if (!is_resource($data)) {
             throw new \RuntimeException('Data is not a resource');
         }
+        $this->options = array_merge($this->options, $options);
         $this->resource = $data;
         $this->meta = stream_get_meta_data($data);
         $this->stat = fstat($data);

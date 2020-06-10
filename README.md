@@ -19,7 +19,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^3.0.0"
+        "voilab/csv": "^4.0.0"
     }
 }
 ```
@@ -30,7 +30,7 @@ $ composer require voilab/csv
 
 ### Install PHP5 compatible version
 
-This PHP5 version can't parse streams.
+This PHP5 version can't parse streams nor iterables.
 
 ``` json
 {
@@ -104,6 +104,7 @@ $parser->fromFile('file.csv', [
     'enclosure' => '"',
     'escape' => '\\',
     'length' => 0,
+    'autoDetectLn' => null,
 
     // PSR stream
     'lineEnding' => "\n",
@@ -178,6 +179,7 @@ https://php.net/fgetcsv and https://php.net/str_getcsv
 | enclosure | `string` | `"` | `fgetcsv` the enclosure string. To tell PHP there isn't enclosure, set to and empty string |
 | escape | `string` | `\\` | `fgetcsv` the escape string |
 | length | `int` | `0` | `fgetcsv` the line length |
+| autoDetectLn | `bool` | `null` | If supplied, set the PHP ini param "auto_detect_line_endings". Doesn't work with PSR streams. |
 | lineEnding | `string` | `\n` | Used with PSR streams to define what is a line ending. You must set a length, so it's possible to read a line |
 | metadata | `array` | `[]` | Resource metadata. Only used with iterables or arrays |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
@@ -463,7 +465,8 @@ CSV;
 
 $parser = new \voilab\csv\Parser();
 
-$result = $parser->fromString($str, [
+$resource = new \voilab\csv\CsvString($str);
+$result = $parser->parse($resource, [
     'delimiter' => ';',
     'size' => 2,
     'columns' => [
@@ -476,9 +479,11 @@ $result = $parser->fromString($str, [
     ]
 ]);
 
-$lastPos = $parser->getPointerPosition();
+$lastPos = $resource->tell();
+$resource->close();
 
-$nextResult = $parser->fromString($str, [
+$resource2 = new \voilab\csv\CsvString($str);
+$nextResult = $parser->parse($resource2, [
     'delimiter' => ';',
     'size' => 2,
     'start' => 2, // yon **can** specify the start index. Not mandatory.
@@ -497,12 +502,12 @@ $nextResult = $parser->fromString($str, [
 ### Line endings problems
 
 Just as stated in official documentation, if you have problems with recognition
-in line endings, you can use the method below to activate auto detect.
+in line endings, you can use the option below to activate auto detect.
 
-`$parser->autoDetectLineEndings($value = true);`
+`$parser->parse($resource, [ 'autoDetectLn' => true ]);`
 
-> Note that auto detect is not reseted to initial value after the parsing has
-> finished.
+> Note that auto detect PHP ini param is not reseted to initial value after the
+> parsing has finished.
 
 When parsing streams (like HTTP response message body), line ending must be
 specified in the array options.
