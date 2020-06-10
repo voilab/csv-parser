@@ -6,6 +6,6 @@ trait TraitResource
     protected function getResource($file)
     {
         $file = $this->dir . '/' . $file;
-        return new \voilab\csv\CsvResource(fopen($file, 'r'));
+        return new \voilab\csv\CsvFile($file);
     }
 }

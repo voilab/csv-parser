@@ -35,7 +35,7 @@ class Seek extends TestCase
 
         $result = $this->parser->parse($this->resource, [
             'size' => 3,
-            'seek' => $this->parser->getPointerPosition()
+            'seek' => $this->resource->tell()
         ]);
 
         $expect = [
@@ -55,7 +55,7 @@ class Seek extends TestCase
 
         $result = $this->parser->parse($this->resource, [
             'size' => 1,
-            'seek' => $this->parser->getPointerPosition(),
+            'seek' => $this->resource->tell(),
             'onRowParsed' => function ($data, $index) {
                 $this->assertEquals($index, 2);
                 return $data;
@@ -84,7 +84,7 @@ class Seek extends TestCase
         $result = $this->parser->parse($this->resource, [
             'size' => 1,
             'start' => 3,
-            'seek' => $this->parser->getPointerPosition(),
+            'seek' => $this->resource->tell(),
             'onError' => function ($e, $index, $meta) {
                 $this->assertEquals($index, 5);
             },

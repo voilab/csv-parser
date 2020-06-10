@@ -32,10 +32,4 @@ class Exception extends \Exception
      * @var int
      */
     const DIFFCOLUMNS = 4;
-
-    /**
-     * Resource has no header line and is not seekable
-     * @var int
-     */
-    const NOTSEEKABLE = 8;
 }
