@@ -22,10 +22,11 @@ class Parser
         'escape' => '\\',
         'length' => 0,
         'autoDetectLn' => null,
+        // resources
+        'metadata' => [],
+        'close' => false,
         // PSR stream
         'lineEnding' => "\n",
-        // iterator or arrays
-        'metadata' => [],
         // headers
         'headers' => true,
         'strict' => true,
@@ -101,9 +102,8 @@ class Parser
      */
     public function fromFile(string $file, array $options = []) : array
     {
-        $result = $this->parse($r = new CsvFile($file, $options), $options);
-        $r->close();
-        return $result;
+        $options['close'] = isset($options['close']) ? $options['close'] : true;
+        return $this->parse(new CsvFile($file, $options), $options);
     }
 
     /**
@@ -115,9 +115,8 @@ class Parser
      */
     public function fromString(string $data, array $options = []) : array
     {
-        $result = $this->parse($r = new CsvString($data, $options), $options);
-        $r->close();
-        return $result;
+        $options['close'] = isset($options['close']) ? $options['close'] : true;
+        return $this->parse(new CsvString($data, $options), $options);
     }
 
     /**
@@ -130,6 +129,18 @@ class Parser
     public function fromResource($data, array $options = []) : array
     {
         return $this->parse(new CsvResource($data, $options), $options);
+    }
+
+    /**
+     * Parse a CSV SPL file
+     *
+     * @param \SplFileObject $data the CSV data
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function fromSplFile(\SplFileObject $data, array $options = []) : array
+    {
+        return $this->parse(new CsvSplFile($data, $options), $options);
     }
 
     /**
@@ -157,7 +168,7 @@ class Parser
     }
 
     /**
-     * Parse a stream that implements the StreamInterface
+     * Parse a stream that implements the main CsvInterface
      *
      * @param CsvInterface $data the CSV data resource
      * @param array $options configuration options for parsing
@@ -214,6 +225,9 @@ class Parser
                 $this->checkError($e, $index, $meta, $options);
             }
             $i++;
+        }
+        if ($options['close']) {
+            $data->close();
         }
         if (!count($parsed)) {
             return $parsed;
@@ -334,7 +348,7 @@ class Parser
                 $this->checkError($e, null, $meta, $options);
             }
             if (isset($csvHeaders[$key])) {
-                $header['index'] = $csvHeaders[$key]['index'];
+                $header['index'] = $csvHeaders[$key];
                 $headers[$header['index']] = $header;
             } else {
                 // fake an index for columns defined in options configuration
@@ -377,10 +391,7 @@ class Parser
                 $meta = [ 'type' => 'init', 'key' => $h ];
                 $this->checkError($e, null, $meta, $options);
             }
-            $headers[$h] = [
-                'csv' => $h,
-                'index' => $i
-            ];
+            $headers[$h] = $i;
         }
         return $headers;
     }

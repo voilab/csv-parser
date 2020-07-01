@@ -6,7 +6,7 @@ namespace voilab\csv;
  * the Psr StreamInterface, but it has an other required method, getCsv(), which
  * is a wrapper for fgetcsv()
  */
-class CsvResource implements CsvInterface
+class CsvSplFile implements CsvInterface
 {
     /**
      * Stream metadata
@@ -22,7 +22,7 @@ class CsvResource implements CsvInterface
 
     /**
      * Stream resource
-     * @var resource
+     * @var \SplFileObject
      */
     private $resource;
 
@@ -36,40 +36,17 @@ class CsvResource implements CsvInterface
     ];
 
     /**
-     * File mode hash
-     * @var array
-     */
-    private $readWriteHash = [
-        'r' => [
-            'r', 'r+', 'w+', 'a+', 'x+', 'c+',
-            'rb', 'r+b', 'w+b', 'a+b', 'x+b', 'c+b',
-            'rt', 'r+t', 'w+t', 'a+t', 'x+t', 'c+t'
-        ],
-        'w' => [
-            'r+', 'w', 'w+', 'a', 'a+', 'x', 'x+', 'c', 'c+',
-            'r+b', 'wb', 'w+b', 'ab', 'a+b', 'xb', 'x+b', 'cb', 'c+b',
-            'r+t', 'wt', 'w+t', 'at', 'a+t', 'xt', 'x+t', 'ct', 'c+t'
-        ]
-    ];
-
-    /**
      * Resource stream constructor
      *
-     * @param resource $data
+     * @param \SplFileObject $data
      * @param array $options the options array
      */
-    public function __construct($data, array $options = [])
+    public function __construct(\SplFileObject $data, array $options = [])
     {
-        if (!is_resource($data)) {
-            throw new \RuntimeException('Data is not a resource');
-        }
         $this->options = array_merge($this->options, $options);
         $this->resource = $data;
-        $this->meta = array_merge(
-            $this->options['metadata'],
-            stream_get_meta_data($data)
-        );
-        $this->stat = fstat($data);
+        $this->meta = $this->options['metadata'];
+        $this->stat = $data->fstat();
     }
 
     /**
@@ -94,9 +71,6 @@ class CsvResource implements CsvInterface
 
     public function close()
     {
-        if ($this->resource && is_resource($this->resource)) {
-            fclose($this->resource);
-        }
         $this->detach();
     }
 
@@ -110,7 +84,7 @@ class CsvResource implements CsvInterface
 
     public function getSize()
     {
-        return isset($this->stat['size']) ? $this->stat['size'] : null;
+        return $this->resource->getSize();
     }
 
     public function tell()
@@ -118,21 +92,18 @@ class CsvResource implements CsvInterface
         if (!$this->resource) {
             return;
         }
-        $result = ftell($this->resource);
-        if ($result === false) {
-            throw new \RuntimeException('Unable to get current stream position');
-        }
-        return $result;
+        return $this->resource->key();
     }
 
     public function eof()
     {
-        return !$this->resource || feof($this->resource);
+        return !$this->resource || $this->resource->eof();
     }
 
     public function isSeekable() : bool
     {
-        return isset($this->meta['seekable']) ? $this->meta['seekable'] : false;
+        // SplFileObject implements SeekableIterator
+        return true;
     }
 
     public function seek($offset, $whence = \SEEK_SET)
@@ -140,9 +111,7 @@ class CsvResource implements CsvInterface
         if (!$this->isSeekable()) {
             return;
         }
-        if (fseek($this->resource, $offset, $whence) === -1) {
-            throw new \RuntimeException('Stream is not seekable');
-        }
+        $this->resource->seek($offset);
     }
 
     public function rewind()
@@ -150,15 +119,12 @@ class CsvResource implements CsvInterface
         if (!$this->resource) {
             return;
         }
-        if (rewind($this->resource) === false) {
-            throw new \RuntimeException('Unable to rewind stream');
-        }
+        $this->resource->rewind();
     }
 
     public function isWritable() : bool
     {
-        $m = $this->meta;
-        return isset($m['mode']) && in_array($m['mode'], $this->readWriteHash['w']);
+        return $this->resource->isWritable();
     }
 
     public function write($string) : int
@@ -166,7 +132,7 @@ class CsvResource implements CsvInterface
         if (!$this->isWritable()) {
             return 0;
         }
-        $result = fwrite($this->resource, $string);
+        $result = $this->resource->fwrite($string);
         if ($result === false) {
             throw new \RuntimeException('Stream is not writable');
         }
@@ -175,8 +141,7 @@ class CsvResource implements CsvInterface
 
     public function isReadable() : bool
     {
-        $m = $this->meta;
-        return isset($m['mode']) && in_array($m['mode'], $this->readWriteHash['r']);
+        return $this->resource->isReadable();
     }
 
     public function read($length) : string
@@ -184,7 +149,7 @@ class CsvResource implements CsvInterface
         if (!$this->isReadable()) {
             return '';
         }
-        $result = fread($this->resource, $length);
+        $result = $this->resource->fread($length);
         if ($result === false) {
             throw new \RuntimeException('Stream not readable');
         }
@@ -196,7 +161,7 @@ class CsvResource implements CsvInterface
         if (!$this->resource) {
             return '';
         }
-        $result = stream_get_contents($this->resource);
+        $result = $this->resource->fread($this->resource->getSize());
         if ($result === false) {
             throw new \RuntimeException('Unable to get stream content');
         }
@@ -215,7 +180,12 @@ class CsvResource implements CsvInterface
         if (!$this->resource) {
             return null;
         }
-        $data = fgetcsv($this->resource, $length, $delimiter, $enclosure, $escape);
+        $data = $this->resource->fgetcsv($delimiter, $enclosure, $escape);
+        // empty line
+        if ($data && count($data) === 1 && !$data[0]) {
+            return false;
+        }
+        // pointer overflow
         if ($data === null) {
             return false;
         }

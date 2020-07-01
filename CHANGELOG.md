@@ -1,9 +1,17 @@
+## Release 4.1.0
+
+- added `fromSplFile()` method and `\voilab\csv\CsvSplFile` class to manage `\SplFileObject`
+- added a way to automatically close the resource after parsing
+- fix CsvStream now seek correctly
+- fix documentation
+- breaking `CsvResource::getCsv()` now returns `false` instead of `null`
+
 ## Release 4.0.0
 
-- Removed unused exception codes
-- Added CsvFile and CsvString implementations
-- Changed the way the seek position is fetched
-- Changed the way `auto_detect_line_endings` is called
+- removed unused exception codes
+- added CsvFile and CsvString implementations
+- changed the way the seek position is fetched
+- changed the way `auto_detect_line_endings` is called
 
 ## Release 3.1.1
 

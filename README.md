@@ -58,6 +58,9 @@ $result = $parser->fromResource($resource, $options = []);
 // or with an array or an Iterator interface
 $result = $parser->fromIterable($array = [['A', 'B'], ['1', 'test']], $options = []);
 
+// or with a SPL file object
+$result = $parser->fromSplFile($object = new \SplFileObject('file.csv'), $options = []);
+
 // or with a PSR stream interface (ex. HTTP response message body)
 $response = $someHttpClient->request('GET', '/');
 $result = $parser->fromStream($response->getBody(), $options = []);
@@ -106,11 +109,12 @@ $parser->fromFile('file.csv', [
     'length' => 0,
     'autoDetectLn' => null,
 
+    // resources
+    'metadata' => [],
+    'close' => false,
+
     // PSR stream
     'lineEnding' => "\n",
-
-    // array or iterable
-    'metadata' => [],
 
     // headers management
     'headers' => true,
@@ -180,8 +184,9 @@ https://php.net/fgetcsv and https://php.net/str_getcsv
 | escape | `string` | `\\` | `fgetcsv` the escape string |
 | length | `int` | `0` | `fgetcsv` the line length |
 | autoDetectLn | `bool` | `null` | If supplied, set the PHP ini param "auto_detect_line_endings". Doesn't work with PSR streams. |
-| lineEnding | `string` | `\n` | Used with PSR streams to define what is a line ending. You must set a length, so it's possible to read a line |
 | metadata | `array` | `[]` | Resource metadata. Only used with iterables or arrays |
+| close | `bool` | `false` | Tells if resource must be closed after parsing is done |
+| lineEnding | `string` | `\n` | Used with PSR streams to define what is a line ending. You must set a length, so it's possible to read a line |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
 | strict | `bool` | `false` | Tells if columns defined in [columns] option must match exactly the number of columns in CSV resource |
 | required | `array` | `[]` | Columns defined in [columns] options that must be present in CSV resource (if aliased, must be the column alias) |
@@ -499,6 +504,12 @@ $nextResult = $parser->parse($resource2, [
 ]);
 ```
 
+### Close the resource
+
+Using `fromString()` and `fromFile()` methods, the resource will be closed
+automatically. With other `from*()` methods, you can close the resource by
+giving the `'close' => true` option.
+
 ### Line endings problems
 
 Just as stated in official documentation, if you have problems with recognition
@@ -697,7 +708,6 @@ Array (
 
 + with PSR streams, carriage returns are not supported in headers and in cells
 content
-+ with PSR streams, seek is not available
 
 ## Testing
 ```
