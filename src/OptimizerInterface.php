@@ -6,7 +6,7 @@ interface OptimizerInterface
     /**
      * Take the value extracted from CSV resource. Can return any mixed value
      *
-     * @param string $value CSV cell content (after parsing). Should be a string
+     * @param string $value CSV cell content (before parsing). Should be a string
      * @param int $index Line index. Correspond to the line number in the CSV resource (taken headers into account)
      * @param array $row Entire row data, raw from fgetcsv. These datas are not the result of the columns functions
      * @param array $parsed Parsed data from previous columns (columns are handled one after the other)

@@ -21,6 +21,7 @@ class CsvStream implements CsvInterface
      * @var array
      */
     private $options = [
+        'debug' => false,
         'lineEnding' => "\n"
     ];
 
@@ -29,6 +30,12 @@ class CsvStream implements CsvInterface
      * @var string
      */
     private $buffer = '';
+
+    /**
+     * Seek position which represents the beginning of a new line
+     * @var int
+     */
+    private $index = 0;
 
     /**
      * Resource stream constructor
@@ -55,6 +62,7 @@ class CsvStream implements CsvInterface
     public function detach()
     {
         $this->buffer = '';
+        $this->index = 0;
         $this->resource->detach();
     }
 
@@ -65,7 +73,8 @@ class CsvStream implements CsvInterface
 
     public function tell()
     {
-        return $this->resource->tell();
+        // returns the seek position, always at the beginning of a line
+        return $this->index;
     }
 
     public function eof()
@@ -80,12 +89,15 @@ class CsvStream implements CsvInterface
 
     public function seek($offset, $whence = \SEEK_SET)
     {
+        $this->buffer = '';
+        $this->index = $offset;
         $this->resource->seek($offset, $whence);
     }
 
     public function rewind()
     {
         $this->buffer = '';
+        $this->index = 0;
         $this->resource->rewind();
     }
 
@@ -134,6 +146,7 @@ class CsvStream implements CsvInterface
         }
 
         $pos = mb_strpos($this->buffer, $this->options['lineEnding']);
+        $this->index = $this->index + $pos + mb_strlen($this->options['lineEnding']);
         if ($pos !== false || (!empty($this->buffer) && $this->resource->eof())) {
             $line = ($pos !== false)
                 ? mb_substr($this->buffer, 0, $pos)
