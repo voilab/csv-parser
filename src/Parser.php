@@ -1,6 +1,8 @@
 <?php
 namespace voilab\csv;
 
+use Psr\Http\Message\StreamInterface;
+
 class Parser
 {
     /**
@@ -8,18 +10,6 @@ class Parser
      * @var string
      */
     const COLUMNALIAS = ' as ';
-
-    /**
-     * Error texts translation
-     * @var I18nInterface
-     */
-    private $i18n;
-
-    /**
-     * Last seek position in the resource
-     * @var int
-     */
-    private $pointerPos;
 
     /**
      * Default options used for parsing CSV
@@ -31,10 +21,16 @@ class Parser
         'enclosure' => '"',
         'escape' => '\\',
         'length' => 0,
+        'autoDetectLn' => null,
+        // resources
+        'metadata' => [],
+        'close' => false,
+        // PSR stream
+        'lineEnding' => "\n",
         // headers
         'headers' => true,
-        'strictHeaders' => true,
-        'strictDefinedHeaders' => true,
+        'strict' => true,
+        'required' => [],
         // big files
         'size' => 0,
         'start' => 0,
@@ -53,7 +49,7 @@ class Parser
     /**
      * Get header name with alias. Produce "initialHeader as alias"
      *
-     * @param string $csvHeader the csv header name
+     * @param string|int $csvHeader the csv header name
      * @param string $alias the alias of this header
      * @return string the column name
      */
@@ -66,36 +62,35 @@ class Parser
      * Constructor of the CSV data parser.
      *
      * @param array $options default options for parsing
-     * @param I18nInterface|null $i18n custom translations for errors
      */
-    public function __construct(array $options = [], I18nInterface $i18n = null)
+    public function __construct(array $options = [])
     {
         $this->options = array_merge($this->options, $options);
-        $this->i18n = $i18n ?: new I18n();
     }
 
     /**
-     * Set automatic detection for line endings, to deal with Mac line endings
+     * Change default option value
      *
-     * @param bool $value set or unset auto detect line endings
-     * @return self
+     * @param string $key The option key
+     * @param mixed $value the new value for this option
+     * @return void
      */
-    public function autoDetectLineEndings($value)
+    public function setOption($key, $value)
     {
-        ini_set('auto_detect_line_endings', (bool) $value);
-        return $this;
+        $this->options[$key] = $value;
     }
 
     /**
-     * Return last position parsed of the resource, if there's a [size] option.
-     * This value can be passed to [seek] option to start exactely where it
-     * ended.
+     * Return default option value or all default options array
      *
-     * @return int
+     * @param string $key The option key
+     * @return array|mixed|null one value or the whole options array
      */
-    public function getPointerPosition()
+    public function getOption($key = null)
     {
-        return $this->pointerPos ?: 0;
+        return $key !== null
+            ? (isset($this->options[$key]) ? $this->options[$key] : null)
+            : $this->options;
     }
 
     /**
@@ -107,13 +102,8 @@ class Parser
      */
     public function fromFile($file, array $options = [])
     {
-        if (!file_exists($file)) {
-            throw new Exception(sprintf($this->i18n->t('NOFILE'), $file), Exception::NOFILE);
-        }
-        $resource = fopen($file, 'r');
-        $result = $this->fromResource($resource, $options);
-        fclose($resource);
-        return $result;
+        $options['close'] = isset($options['close']) ? $options['close'] : true;
+        return $this->parse(new CsvFile($file, $options), $options);
     }
 
     /**
@@ -125,12 +115,8 @@ class Parser
      */
     public function fromString($data, array $options = [])
     {
-        $stream = fopen('php://temp', 'r+');
-        fwrite($stream, $data);
-        rewind($stream);
-        $result = $this->fromResource($stream, $options);
-        fclose($stream);
-        return $result;
+        $options['close'] = isset($options['close']) ? $options['close'] : true;
+        return $this->parse(new CsvString($data, $options), $options);
     }
 
     /**
@@ -142,40 +128,84 @@ class Parser
      */
     public function fromResource($data, array $options = [])
     {
-        if (!is_resource($data)) {
-            throw new Exception($this->i18n->t('NORESOURCE'), Exception::NORESOURCE);
-        }
+        return $this->parse(new CsvResource($data, $options), $options);
+    }
+
+    /**
+     * Parse a CSV SPL file
+     *
+     * @param \SplFileObject $data the CSV data
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function fromSplFile(\SplFileObject $data, array $options = [])
+    {
+        return $this->parse(new CsvSplFile($data, $options), $options);
+    }
+
+    /**
+     * Parse a CSV stream
+     *
+     * @param StreamInterface $data the CSV stream
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function fromStream(StreamInterface $data, array $options = [])
+    {
+        return $this->parse(new CsvStream($data, $options), $options);
+    }
+
+    /**
+     * Parse an array or an iterable object
+     *
+     * @param iterable $data the CSV data array
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function fromIterable($data, array $options = [])
+    {
+        return $this->parse(new CsvIterable($data, $options), $options);
+    }
+
+    /**
+     * Parse a stream that implements the main CsvInterface
+     *
+     * @param CsvInterface $data the CSV data resource
+     * @param array $options configuration options for parsing
+     * @return array the processed data
+     */
+    public function parse(CsvInterface $data, array $options = [])
+    {
         $options = array_merge($this->options, $options);
         if (!count($options['columns'])) {
-            throw new Exception($this->i18n->t('NOCOLUMN'), Exception::NOCOLUMN);
+            $e = new Exception("No column configured in options", Exception::NOCOLUMN);
+            $meta = [ 'type' => 'init' ];
+            $this->checkError($e, null, $meta, $options);
         }
         // there're two ways to handle no-enclosure: same as separator or 0x00
         if (!$options['enclosure']) {
             $options['enclosure'] = 0x00;
         }
+        if ($options['autoDetectLn'] !== null) {
+            ini_set('auto_detect_line_endings', (bool) $options['autoDetectLn']);
+        }
 
         $columns = $this->getColumns($data, $options);
         // seek directly at the right place
         if ($options['seek']) {
-            $meta = stream_get_meta_data($data);
-            if (!$meta['seekable']) {
-                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
-            }
-            if (fseek($data, $options['seek']) === -1) {
-                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
-            }
+            $data->seek($options['seek']);
         }
 
+        // if seek and start are defined, we can set the starting point
+        // to what is defined
+        $i = $options['seek'] && $options['start']
+            ? $options['start']
+            : 0;
+
         $parsed = [];
-        $i = 0;
-        if ($options['seek'] && $options['start']) {
-            // if seek and start are defined, we can set the starting point
-            // to what is defined
-            $i = $options['start'];
-        }
         while (
             (!$options['size'] || $i < $options['size'] + $options['start']) &&
-            false !== ($row = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']))
+            false !== ($row = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']))
         ) {
             if ($options['size'] && $i < $options['start']) {
                 $i++;
@@ -191,16 +221,14 @@ class Parser
                 }
                 $parsed[] = $rowData;
             } catch (\Exception $e) {
-                if (is_callable($options['onError'])) {
-                    $info = [ 'type' => 'row' ];
-                    $options['onError']($e, $index, $info, $options);
-                } else {
-                    throw $e;
-                }
+                $meta = [ 'type' => 'row' ];
+                $this->checkError($e, $index, $meta, $options);
             }
             $i++;
         }
-        $this->pointerPos = @ftell($data);
+        if ($options['close']) {
+            $data->close();
+        }
         if (!count($parsed)) {
             return $parsed;
         }
@@ -229,35 +257,24 @@ class Parser
                 continue;
             }
             $columnData = array_column($data, $key);
+            $meta['type'] = 'reducer';
             try {
-                $meta['type'] = 'reducer';
                 $result[$key] = $options['columns'][$meta['full']]->reduce($columnData, $data, $result, $meta, $options);
-                // set the reduce result in the main data array
-                foreach ($data as $i => $row) {
-                    $index = $i + ($options['headers'] ? 2 : 1);
-                    $value = $data[$i][$key];
-                    $meta['type'] = 'optimizer';
-                    try {
-                        $data[$i][$key] = isset($result[$key][$value])
-                            ? $result[$key][$value]
-                            : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
-
-                    } catch (\Exception $e) {
-                        if (is_callable($options['onError'])) {
-                            $options['onError']($e, $index, $meta, $options);
-                        } else {
-                            throw $e;
-                        }
-                    }
-                }
             } catch (\Exception $e) {
-                if ($meta['type'] === 'optimizer') {
-                    throw $e;
-                }
-                if (is_callable($options['onError'])) {
-                    $options['onError']($e, null, $meta, $options);
-                } else {
-                    throw $e;
+                $this->checkError($e, null, $meta, $options);
+            }
+            // set the reduce result in the main data array
+            foreach ($data as $i => $row) {
+                $index = $i + ($options['headers'] ? 2 : 1);
+                $value = $data[$i][$key];
+                $meta['type'] = 'optimizer';
+                try {
+                    $data[$i][$key] = isset($result[$key][$value])
+                        ? $result[$key][$value]
+                        : $options['columns'][$meta['full']]->absent($value, $index, $data[$i], $result, $meta, $options);
+
+                } catch (\Exception $e) {
+                    $this->checkError($e, $index, $meta, $options);
                 }
             }
         }
@@ -276,8 +293,10 @@ class Parser
     private function getRow(array $row, $index, array $columns, array $options)
     {
         $parsed = [];
-        if ($options['strictHeaders'] && count($row) !== count($columns)) {
-            throw new Exception(sprintf($this->i18n->t('DIFFCOLUMNS'), $index), Exception::DIFFCOLUMNS);
+        if ($options['strict'] && count($row) !== count($columns)) {
+            $e = new Exception(sprintf("At line [%s], columns don't match headers", $index), Exception::DIFFCOLUMNS);
+            $meta = [ 'type' => 'init', 'key' => $index ];
+            $this->checkError($e, $index, $meta, $options);
         }
         foreach ($columns as $meta) {
             $meta['type'] = 'column';
@@ -302,12 +321,7 @@ class Parser
                     : $col;
 
             } catch (\Exception $e) {
-                if (is_callable($options['onError'])) {
-                    // user will decide what to do with the error
-                    $options['onError']($e, $index, $meta, $options);
-                } else {
-                    throw $e;
-                }
+                $this->checkError($e, $index, $meta, $options);
             }
         }
         return $parsed;
@@ -316,11 +330,11 @@ class Parser
     /**
      * Return the columns
      *
-     * @param resource $data the CSV data resource
+     * @param CsvInterface $data the CSV data resource
      * @param array $options configuration options for parsing
      * @return array the columns. If they are aliased, return the aliased ones
      */
-    private function getColumns($data, array $options)
+    private function getColumns(CsvInterface $data, array $options)
     {
         $csvHeaders = $this->getCsvHeaders($data, $options);
         $optionsHeaders = $this->getOptionsHeaders($options);
@@ -328,11 +342,13 @@ class Parser
         $max = count($csvHeaders);
         $headers = [];
         foreach ($optionsHeaders as $key => $header) {
-            if (($options['strictHeaders'] || $options['strictDefinedHeaders']) && !isset($csvHeaders[$key])) {
-                throw new Exception(sprintf($this->i18n->t('HEADERMISSING'), $key), Exception::HEADERMISSING);
+            if (in_array($header['name'], $options['required']) && !isset($csvHeaders[$key])) {
+                $e = new Exception(sprintf("Header [%s] not found in CSV resource", $key), Exception::HEADERMISSING);
+                $meta = [ 'type' => 'init', 'key' => $key ];
+                $this->checkError($e, null, $meta, $options);
             }
             if (isset($csvHeaders[$key])) {
-                $header['index'] = $csvHeaders[$key]['index'];
+                $header['index'] = $csvHeaders[$key];
                 $headers[$header['index']] = $header;
             } else {
                 // fake an index for columns defined in options configuration
@@ -349,22 +365,21 @@ class Parser
     /**
      * Get headers from CSV resource
      *
-     * @param resource $data the CSV data resource
+     * @param CsvInterface $data the CSV data resource
      * @param array $options configuration options for parsing
      * @return array
      */
-    private function getCsvHeaders($data, array $options)
+    private function getCsvHeaders(CsvInterface $data, array $options)
     {
-        $columns = fgetcsv($data, $options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
+        $data->rewind();
+        $columns = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
         if (!$options['headers']) {
-            $meta = stream_get_meta_data($data);
-            if (!$meta['seekable']) {
-                throw new Exception($this->i18n->t('NOTSEEKABLE'), Exception::NOTSEEKABLE);
-            }
-            rewind($data);
+            $data->rewind();
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
-            throw new Exception($this->i18n->t('EMPTYCONTENT'), Exception::EMPTYCONTENT);
+            $e = new Exception("CSV data is empty", Exception::EMPTYCONTENT);
+            $meta = [ 'type' => 'init' ];
+            $this->checkError($e, null, $meta, $options);
         }
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
         $headers = [];
@@ -372,12 +387,11 @@ class Parser
             // remove carriage returns and surnumeral spaces
             $h = preg_replace('/\s\s+/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $h));
             if (isset($headers[$h])) {
-                throw new Exception(sprintf($this->i18n->t('HEADEREXISTS'), $h), Exception::HEADEREXISTS);
+                $e = new Exception(sprintf("Header [%s] can't be the same for two columns", $h), Exception::HEADEREXISTS);
+                $meta = [ 'type' => 'init', 'key' => $h ];
+                $this->checkError($e, null, $meta, $options);
             }
-            $headers[$h] = [
-                'csv' => $h,
-                'index' => $i
-            ];
+            $headers[$h] = $i;
         }
         return $headers;
     }
@@ -404,5 +418,24 @@ class Parser
             ];
         }
         return $aliased;
+    }
+
+    /**
+     * Manage error if the onError option is defined
+     *
+     * @param \Exception $e the exception that occured
+     * @param int|null $index current index or null
+     * @param array $meta metadata for this exception
+     * @param array $options configuration options for parsing
+     * @return void
+     */
+    private function checkError(\Exception $e, $index, array $meta, array $options)
+    {
+        if (is_callable($options['onError'])) {
+            // user will decide what to do with the error
+            $options['onError']($e, $index, $meta, $options);
+        } else {
+            throw $e;
+        }
     }
 }

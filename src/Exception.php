@@ -32,22 +32,4 @@ class Exception extends \Exception
      * @var int
      */
     const DIFFCOLUMNS = 4;
-
-    /**
-     * The provided file name doesn't exist
-     * @var int
-     */
-    const NOFILE = 5;
-
-    /**
-     * The provided data is not of type [resource]
-     * @var int
-     */
-    const NORESOURCE = 6;
-
-    /**
-     * Resource has no header line and is not seekable
-     * @var int
-     */
-    const NOTSEEKABLE = 8;
 }
