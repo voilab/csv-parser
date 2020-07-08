@@ -49,6 +49,21 @@ class CsvStream implements CsvInterface
         $this->options = array_merge($this->options, $options);
     }
 
+    public function setMetadata(string $key, $value)
+    {
+        $this->options[$key] = $value;
+    }
+
+    /**
+     * Returns underlying resource
+     *
+     * @return StreamInterface
+     */
+    public function getResource()
+    {
+        return $this->resource;
+    }
+
     public function __toString() : string
     {
         return $this->resource->__toString();
@@ -146,7 +161,7 @@ class CsvStream implements CsvInterface
         }
 
         $pos = mb_strpos($this->buffer, $this->options['lineEnding']);
-        $this->index = $this->index + $pos + mb_strlen($this->options['lineEnding']);
+        $this->index = $this->index + ($pos ?: 0) + mb_strlen($this->options['lineEnding']);
         if ($pos !== false || (!empty($this->buffer) && $this->resource->eof())) {
             $line = ($pos !== false)
                 ? mb_substr($this->buffer, 0, $pos)

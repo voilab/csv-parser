@@ -1,3 +1,8 @@
+## Release 5.0.0
+
+- added an algorithm to guess line ending and delimiter
+- breaking `CsvInterface` now implements 2 new methods: `getResource` and `setMetadata`
+
 ## Release 4.1.0
 
 - added `fromSplFile()` method and `\voilab\csv\CsvSplFile` class to manage `\SplFileObject`

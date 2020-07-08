@@ -32,6 +32,11 @@ class CsvIterable implements CsvInterface
         $this->options = array_merge($this->options, $options);
     }
 
+    public function setMetadata(string $key, $value) 
+    {
+        $this->options[$key] = $value;
+    }
+
     /**
      * Returns underlying resource
      *

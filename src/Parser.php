@@ -38,6 +38,7 @@ class Parser
         // data pre-manipulation
         'autotrim' => true,
         'onBeforeColumnParse' => null,
+        'guesser' => null,
         // data post-manipulation
         'onRowParsed' => null,
         'onError' => null,
@@ -188,6 +189,17 @@ class Parser
         }
         if ($options['autoDetectLn'] !== null) {
             ini_set('auto_detect_line_endings', (bool) $options['autoDetectLn']);
+        }
+
+        if ($options['guesser'] instanceof GuesserInterface) {
+            try {
+                $options['lineEnding'] = $options['guesser']->guessLineEnding($data) ?: $options['lineEnding'];
+                $data->setMetadata('lineEnding', $options['lineEnding']);
+                $options['delimiter'] = $options['guesser']->guessDelimiter($data, $options);
+            } catch (\Exception $e) {
+                $meta = [ 'type' => 'init' ];
+                $this->checkError($e, null, $meta, $options);
+            }
         }
 
         $columns = $this->getColumns($data, $options);

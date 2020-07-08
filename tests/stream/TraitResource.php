@@ -10,7 +10,9 @@ trait TraitResource
 {
     protected function getResource($file, $debug = false)
     {
-        $this->parser->setOption('length', 1024);
+        if (isset($this->parser)) {
+            $this->parser->setOption('length', 1024);
+        }
         $file = $this->dir . '/' . $file;
         $mock = new MockHandler([
             new Response(200, ['Content-Type', 'text/csv'], file_get_contents($file))
