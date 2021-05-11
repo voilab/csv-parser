@@ -180,8 +180,7 @@ class Parser
         $options = array_merge($this->options, $options);
         if (!count($options['columns'])) {
             $e = new Exception("No column configured in options", Exception::NOCOLUMN);
-            $meta = [ 'type' => 'init' ];
-            $this->checkError($e, null, $meta, $options);
+            $this->checkError($e, null, [ 'type' => 'init' ], $options);
         }
         // there're two ways to handle no-enclosure: same as separator or 0x00
         if (!$options['enclosure']) {
@@ -195,10 +194,9 @@ class Parser
             try {
                 $options['lineEnding'] = $options['guesser']->guessLineEnding($data) ?: $options['lineEnding'];
                 $data->setMetadata('lineEnding', $options['lineEnding']);
-                $options['delimiter'] = $options['guesser']->guessDelimiter($data, $options);
+                $options['delimiter'] = $options['guesser']->guessDelimiter($data);
             } catch (\Exception $e) {
-                $meta = [ 'type' => 'init' ];
-                $this->checkError($e, null, $meta, $options);
+                $this->checkError($e, null, [ 'type' => 'init' ], $options);
             }
         }
 
@@ -233,8 +231,7 @@ class Parser
                 }
                 $parsed[] = $rowData;
             } catch (\Exception $e) {
-                $meta = [ 'type' => 'row' ];
-                $this->checkError($e, $index, $meta, $options);
+                $this->checkError($e, $index, [ 'type' => 'row' ], $options);
             }
             $i++;
         }
@@ -307,8 +304,7 @@ class Parser
         $parsed = [];
         if ($options['strict'] && count($row) !== count($columns)) {
             $e = new Exception(sprintf("At line [%s], columns don't match headers", $index), Exception::DIFFCOLUMNS);
-            $meta = [ 'type' => 'init', 'key' => $index ];
-            $this->checkError($e, $index, $meta, $options);
+            $this->checkError($e, $index, [ 'type' => 'init', 'key' => $index ], $options);
         }
         foreach ($columns as $meta) {
             $meta['type'] = 'column';
@@ -319,6 +315,9 @@ class Parser
                 $col = $options['autotrim'] ? trim($col) : (string) $col;
                 if (is_callable($options['onBeforeColumnParse'])) {
                     $col = $options['onBeforeColumnParse']($col, $index, $meta, $options);
+                }
+                if ($options['guesser'] instanceof GuesserInterface) {
+                    $col = $options['guesser']->guessEncoding($col, $index, $meta, $options);
                 }
 
                 $method = isset($options['columns'][$meta['full']])
@@ -356,8 +355,7 @@ class Parser
         foreach ($optionsHeaders as $key => $header) {
             if (in_array($header['name'], $options['required']) && !isset($csvHeaders[$key])) {
                 $e = new Exception(sprintf("Header [%s] not found in CSV resource", $key), Exception::HEADERMISSING);
-                $meta = [ 'type' => 'init', 'key' => $key ];
-                $this->checkError($e, null, $meta, $options);
+                $this->checkError($e, null, [ 'type' => 'init', 'key' => $key ], $options);
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key];
@@ -390,10 +388,14 @@ class Parser
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
             $e = new Exception("CSV data is empty", Exception::EMPTY);
-            $meta = [ 'type' => 'init' ];
-            $this->checkError($e, null, $meta, $options);
+            $this->checkError($e, null, [ 'type' => 'init' ], $options);
         }
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
+        if ($options['guesser'] instanceof GuesserInterface) {
+            foreach ($cols as $i => $c) {
+                $cols[$i] = $options['guesser']->guessEncoding($c, $i, [ 'type' => 'init' ], $options);
+            }
+        }
         $headers = [];
         foreach ($cols as $i => $h) {
             // remove carriage returns and surnumeral spaces

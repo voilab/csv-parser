@@ -131,6 +131,7 @@ $parser->fromFile('file.csv', [
     'onBeforeColumnParse' => function (string $data) {
         return utf8_encode($data);
     },
+    'guesser' => new \voilab\csv\Guesser(),
 
     // data post-manipulation
     'onRowParsed' => function (array $row) {
@@ -195,6 +196,7 @@ https://php.net/fgetcsv and https://php.net/str_getcsv
 | seek | `int` | `0` | Pointer position in file, used in conjunction with [size]. Take over [start] to define the starting position |
 | autotrim | `bool` | `true` | Trim all cell content, so you have always trimmed data in you columns functions |
 | onBeforeColumnParse | `callable` | `null` | Method called just before any defined column method |
+| guesser | `GuesserInterface` | `null` | Object used to guess line ending, delimiter and content encoding |
 | onRowParsed | `callable` | `null` | Method called when a row has finished parsing |
 | onError | `callable` | `null` | Method called when an error occurs, at column and at row level |
 | columns | `array` |  | CSV columns definition (see examples). This option is required |
