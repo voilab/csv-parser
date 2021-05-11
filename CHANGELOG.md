@@ -1,3 +1,7 @@
+## Release 4.2.0
+
+- added `chunkSize` and `onChunkParsed` options (see documentation)
+
 ## Release 4.1.0
 
 - added `fromSplFile()` method and `\voilab\csv\CsvSplFile` class to manage `\SplFileObject`

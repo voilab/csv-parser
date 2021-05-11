@@ -35,11 +35,13 @@ class Parser
         'size' => 0,
         'start' => 0,
         'seek' => 0,
+        'chunkSize' => 0,
         // data pre-manipulation
         'autotrim' => true,
         'onBeforeColumnParse' => null,
         // data post-manipulation
         'onRowParsed' => null,
+        'onChunkParsed' => null,
         'onError' => null,
         // column definition
         'columns' => [],
@@ -102,7 +104,7 @@ class Parser
      */
     public function fromFile(string $file, array $options = []) : array
     {
-        $options['close'] = isset($options['close']) ? $options['close'] : true;
+        $options['close'] = true;
         return $this->parse(new CsvFile($file, $options), $options);
     }
 
@@ -115,7 +117,7 @@ class Parser
      */
     public function fromString(string $data, array $options = []) : array
     {
-        $options['close'] = isset($options['close']) ? $options['close'] : true;
+        $options['close'] = true;
         return $this->parse(new CsvString($data, $options), $options);
     }
 
@@ -179,8 +181,7 @@ class Parser
         $options = array_merge($this->options, $options);
         if (!count($options['columns'])) {
             $e = new Exception("No column configured in options", Exception::NOCOLUMN);
-            $meta = [ 'type' => 'init' ];
-            $this->checkError($e, null, $meta, $options);
+            $this->checkError($e, null, [ 'type' => 'init' ], $options);
         }
         // there're two ways to handle no-enclosure: same as separator or 0x00
         if (!$options['enclosure']) {
@@ -203,6 +204,7 @@ class Parser
             : 0;
 
         $parsed = [];
+        $chunks = 0;
         while (
             (!$options['size'] || $i < $options['size'] + $options['start']) &&
             false !== ($row = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']))
@@ -220,9 +222,17 @@ class Parser
                     $rowData = $options['onRowParsed']($rowData, $index, $parsed, $options);
                 }
                 $parsed[] = $rowData;
+                if (
+                    is_callable($options['onChunkParsed']) &&
+                    $options['chunkSize'] &&
+                    count($parsed) === $options['chunkSize']
+                ) {
+                    $this->postProcess($parsed, $columns, $options, $chunks);
+                    $chunks += 1;
+                    $parsed = [];
+                }
             } catch (\Exception $e) {
-                $meta = [ 'type' => 'row' ];
-                $this->checkError($e, $index, $meta, $options);
+                $this->checkError($e, $index, [ 'type' => 'row' ], $options);
             }
             $i++;
         }
@@ -232,7 +242,7 @@ class Parser
         if (!count($parsed)) {
             return $parsed;
         }
-        return $this->postProcess($parsed, $columns, $options);
+        return $this->postProcess($parsed, $columns, $options, $chunks);
     }
 
     /**
@@ -241,9 +251,10 @@ class Parser
      * @param array $data the processed data
      * @param array $columns columns metadata
      * @param array $options configuration options for parsing
+     * @param int $indexCall number of times this method was called
      * @return array the processed data
      */
-    private function postProcess(array $data, array $columns, array $options) : array
+    private function postProcess(array $data, array $columns, array $options, int $indexCall) : array
     {
         $keys = array_keys($data[0]);
         $result = [];
@@ -278,6 +289,9 @@ class Parser
                 }
             }
         }
+        if ($options['chunkSize'] && is_callable($options['onChunkParsed'])) {
+            $options['onChunkParsed']($data, $indexCall, $columns, $options);
+        }
         return $data;
     }
 
@@ -295,8 +309,7 @@ class Parser
         $parsed = [];
         if ($options['strict'] && count($row) !== count($columns)) {
             $e = new Exception(sprintf("At line [%s], columns don't match headers", $index), Exception::DIFFCOLUMNS);
-            $meta = [ 'type' => 'init', 'key' => $index ];
-            $this->checkError($e, $index, $meta, $options);
+            $this->checkError($e, $index, [ 'type' => 'init', 'key' => $index ], $options);
         }
         foreach ($columns as $meta) {
             $meta['type'] = 'column';
@@ -344,8 +357,7 @@ class Parser
         foreach ($optionsHeaders as $key => $header) {
             if (in_array($header['name'], $options['required']) && !isset($csvHeaders[$key])) {
                 $e = new Exception(sprintf("Header [%s] not found in CSV resource", $key), Exception::HEADERMISSING);
-                $meta = [ 'type' => 'init', 'key' => $key ];
-                $this->checkError($e, null, $meta, $options);
+                $this->checkError($e, null, [ 'type' => 'init', 'key' => $key ], $options);
             }
             if (isset($csvHeaders[$key])) {
                 $header['index'] = $csvHeaders[$key];
@@ -378,8 +390,7 @@ class Parser
         }
         if (!$columns || (count($columns) === 1 && $columns[0] === null)) {
             $e = new Exception("CSV data is empty", Exception::EMPTY);
-            $meta = [ 'type' => 'init' ];
-            $this->checkError($e, null, $meta, $options);
+            $this->checkError($e, null, [ 'type' => 'init' ], $options);
         }
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
         $headers = [];
@@ -388,8 +399,7 @@ class Parser
             $h = preg_replace('/\s\s+/', ' ', str_replace(["\r\n", "\r", "\n"], ' ', $h));
             if (isset($headers[$h])) {
                 $e = new Exception(sprintf("Header [%s] can't be the same for two columns", $h), Exception::HEADEREXISTS);
-                $meta = [ 'type' => 'init', 'key' => $h ];
-                $this->checkError($e, null, $meta, $options);
+                $this->checkError($e, null, [ 'type' => 'init', 'key' => $h ], $options);
             }
             $headers[$h] = $i;
         }
