@@ -222,17 +222,17 @@ class Parser
                     $rowData = $options['onRowParsed']($rowData, $index, $parsed, $options);
                 }
                 $parsed[] = $rowData;
-                if (
-                    is_callable($options['onChunkParsed']) &&
-                    $options['chunkSize'] &&
-                    count($parsed) === $options['chunkSize']
-                ) {
-                    $this->postProcess($parsed, $columns, $options, $chunks);
-                    $chunks += 1;
-                    $parsed = [];
-                }
             } catch (\Exception $e) {
                 $this->checkError($e, $index, [ 'type' => 'row' ], $options);
+            }
+            if (
+                is_callable($options['onChunkParsed']) &&
+                $options['chunkSize'] &&
+                count($parsed) === $options['chunkSize']
+            ) {
+                $this->postProcess($parsed, $columns, $options, $chunks);
+                $chunks += 1;
+                $parsed = [];
             }
             $i++;
         }
@@ -290,7 +290,11 @@ class Parser
             }
         }
         if ($options['chunkSize'] && is_callable($options['onChunkParsed'])) {
-            $options['onChunkParsed']($data, $indexCall, $columns, $options);
+            try {
+                $options['onChunkParsed']($data, $indexCall, $columns, $options);
+            } catch (\Exception $e) {
+                $this->checkError($e, $indexCall, [ 'type' => 'chunk' ], $options);
+            }
         }
         return $data;
     }

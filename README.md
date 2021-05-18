@@ -141,7 +141,7 @@ $parser->fromFile('file.csv', [
     'onChunkParsed' => function (array $rows) {
         // do whatever you want, return void
     },
-    'onError' => function (\Exception $e, int $index) {
+    'onError' => function (\Exception $e, $index) {
         throw new \Exception($e->getMessage() . ": at line $index");
     }
 
@@ -545,9 +545,18 @@ If you use an optimizer, you can call an Exception from there too. The key
 ```php
 $errors = [];
 $data = $parser->fromFile('file.csv', [
-    'onError' => function (\Exception $e, int $index, array $meta, array $options) use (&$errors) {
+    'onError' => function (\Exception $e, $index, array $meta, array $options) use (&$errors) {
         $errors[] = "Line [$index]: " . $e->getMessage();
         // do nothing more, so next columns and next lines can be parsed too.
+        // meta types are the following:
+        switch ($meta['type']) {
+            case 'init':
+            case 'column':
+            case 'row':
+            case 'reducer':
+            case 'optimizer':
+            case 'chunk':
+        }
     },
     'columns' => [
         'email' => function (string $data) {
@@ -574,7 +583,7 @@ account.
 
 ```php
 $data = $parser->fromFile('file.csv', [
-    'onError' => function (\Exception $e, int $index, array $meta) {
+    'onError' => function (\Exception $e, $index, array $meta) {
         if ($meta['type'] === 'init') {
             // called during initialization.
             var_dump($meta['key']); // for errors with specific key
@@ -729,6 +738,9 @@ $parser->fromString($str, [
 
         // This method returns void
     },
+    'onError' => function (\Exception $e, $index, array $meta) {
+        // if ($meta['type] === 'chunk') { do something }
+    },
     'columns' => [
         'A as name' => function (string $data) {
             return (int) $data;
@@ -740,7 +752,7 @@ $parser->fromString($str, [
 ]);
 
 ```
-> If you use optimizers, `$rows` will be the result of the optimizer.
+> If you use optimizers, `$rows` will be the resultset optimized.
 
 > You don't need to use the array returned by `fromString` (or alike)
 > because what you did in `onChunkParsed` is enough.
