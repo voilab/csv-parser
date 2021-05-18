@@ -63,28 +63,30 @@
     "packages-dev": [
         {
             "name": "doctrine/annotations",
-            "version": "1.12.1",
+            "version": "1.13.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/doctrine/annotations.git",
-                "reference": "b17c5014ef81d212ac539f07a1001832df1b6d3b"
+                "reference": "e6e7b7d5b45a2f2abc5460cc6396480b2b1d321f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/doctrine/annotations/zipball/b17c5014ef81d212ac539f07a1001832df1b6d3b",
-                "reference": "b17c5014ef81d212ac539f07a1001832df1b6d3b",
+                "url": "https://api.github.com/repos/doctrine/annotations/zipball/e6e7b7d5b45a2f2abc5460cc6396480b2b1d321f",
+                "reference": "e6e7b7d5b45a2f2abc5460cc6396480b2b1d321f",
                 "shasum": ""
             },
             "require": {
                 "doctrine/lexer": "1.*",
                 "ext-tokenizer": "*",
-                "php": "^7.1 || ^8.0"
+                "php": "^7.1 || ^8.0",
+                "psr/cache": "^1 || ^2 || ^3"
             },
             "require-dev": {
-                "doctrine/cache": "1.*",
+                "doctrine/cache": "^1.11 || ^2.0",
                 "doctrine/coding-standard": "^6.0 || ^8.1",
                 "phpstan/phpstan": "^0.12.20",
-                "phpunit/phpunit": "^7.5 || ^9.1.5"
+                "phpunit/phpunit": "^7.5 || ^8.0 || ^9.1.5",
+                "symfony/cache": "^4.4 || ^5.2"
             },
             "type": "library",
             "autoload": {
@@ -127,9 +129,9 @@
             ],
             "support": {
                 "issues": "https://github.com/doctrine/annotations/issues",
-                "source": "https://github.com/doctrine/annotations/tree/1.12.1"
+                "source": "https://github.com/doctrine/annotations/tree/1.13.1"
             },
-            "time": "2021-02-21T21:00:45+00:00"
+            "time": "2021-05-16T18:07:53+00:00"
         },
         {
             "name": "doctrine/instantiator",
@@ -1481,6 +1483,55 @@
             "time": "2017-06-30T09:13:00+00:00"
         },
         {
+            "name": "psr/cache",
+            "version": "1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-fig/cache.git",
+                "reference": "d11b50ad223250cf17b86e38383413f5a6764bf8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-fig/cache/zipball/d11b50ad223250cf17b86e38383413f5a6764bf8",
+                "reference": "d11b50ad223250cf17b86e38383413f5a6764bf8",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.0.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Psr\\Cache\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "PHP-FIG",
+                    "homepage": "http://www.php-fig.org/"
+                }
+            ],
+            "description": "Common interface for caching libraries",
+            "keywords": [
+                "cache",
+                "psr",
+                "psr-6"
+            ],
+            "support": {
+                "source": "https://github.com/php-fig/cache/tree/master"
+            },
+            "time": "2016-08-06T20:24:11+00:00"
+        },
+        {
             "name": "psr/container",
             "version": "1.0.0",
             "source": {
@@ -2183,16 +2234,16 @@
         },
         {
             "name": "symfony/console",
-            "version": "v4.4.22",
+            "version": "v4.4.23",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/console.git",
-                "reference": "36bbd079b69b94bcc9c9c9e1e37ca3b1e7971625"
+                "reference": "1ab187ac21d41d7d34a4f529091a1f5d0bb2924f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/console/zipball/36bbd079b69b94bcc9c9c9e1e37ca3b1e7971625",
-                "reference": "36bbd079b69b94bcc9c9c9e1e37ca3b1e7971625",
+                "url": "https://api.github.com/repos/symfony/console/zipball/1ab187ac21d41d7d34a4f529091a1f5d0bb2924f",
+                "reference": "1ab187ac21d41d7d34a4f529091a1f5d0bb2924f",
                 "shasum": ""
             },
             "require": {
@@ -2252,7 +2303,7 @@
             "description": "Eases the creation of beautiful and testable command line interfaces",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/console/tree/v4.4.22"
+                "source": "https://github.com/symfony/console/tree/v4.4.23"
             },
             "funding": [
                 {
@@ -2268,7 +2319,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2021-04-16T17:32:19+00:00"
+            "time": "2021-05-10T12:53:15+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",

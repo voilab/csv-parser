@@ -1,3 +1,8 @@
+## Release 4.2.1
+
+- small change in chunk parsing, so it can be catched if an exception occurs
+- docs
+
 ## Release 4.2.0
 
 - added `chunkSize` and `onChunkParsed` options (see documentation)
