@@ -125,6 +125,7 @@ $parser->fromFile('file.csv', [
     'start' => 0,
     'size' => 0,
     'seek' => 0,
+    'chunkSize' => 0,
 
     // data pre-manipulation
     'autotrim' => true,
@@ -138,7 +139,10 @@ $parser->fromFile('file.csv', [
         $row['other_stuff'] = do_some_stuff($row);
         return $row;
     },
-    'onError' => function (\Exception $e, int $index) {
+    'onChunkParsed' => function (array $rows) {
+        // do whatever you want, return void
+    },
+    'onError' => function (\Exception $e, $index) {
         throw new \Exception($e->getMessage() . ": at line $index");
     }
 
@@ -195,6 +199,8 @@ https://php.net/fgetcsv and https://php.net/str_getcsv
 | size | `int` | `0` | Number of lines to process. `0` ignores [start] and [size] |
 | seek | `int` | `0` | Pointer position in file, used in conjunction with [size]. Take over [start] to define the starting position |
 | autotrim | `bool` | `true` | Trim all cell content, so you have always trimmed data in you columns functions |
+| chunkSize | `int` | `0` | Number of rows to parse (including optimizer) to create a chunk |
+| onChunkParsed | `callable` | `null` | Method called when a chunk is complete |
 | onBeforeColumnParse | `callable` | `null` | Method called just before any defined column method |
 | guesser | `GuesserInterface` | `null` | Object used to guess line ending, delimiter and content encoding |
 | onRowParsed | `callable` | `null` | Method called when a row has finished parsing |
@@ -236,7 +242,7 @@ headers. Cells content are not manipulated, except if `autotrim` is true.
 ```
 " a header "     => "a header"
 "a       header" => "a header"
-"a  
+"a
 header  "        => "a header"
 ```
 
@@ -541,9 +547,18 @@ If you use an optimizer, you can call an Exception from there too. The key
 ```php
 $errors = [];
 $data = $parser->fromFile('file.csv', [
-    'onError' => function (\Exception $e, int $index, array $meta, array $options) use (&$errors) {
+    'onError' => function (\Exception $e, $index, array $meta, array $options) use (&$errors) {
         $errors[] = "Line [$index]: " . $e->getMessage();
         // do nothing more, so next columns and next lines can be parsed too.
+        // meta types are the following:
+        switch ($meta['type']) {
+            case 'init':
+            case 'column':
+            case 'row':
+            case 'reducer':
+            case 'optimizer':
+            case 'chunk':
+        }
     },
     'columns' => [
         'email' => function (string $data) {
@@ -570,7 +585,7 @@ account.
 
 ```php
 $data = $parser->fromFile('file.csv', [
-    'onError' => function (\Exception $e, int $index, array $meta) {
+    'onError' => function (\Exception $e, $index, array $meta) {
         if ($meta['type'] === 'init') {
             // called during initialization.
             var_dump($meta['key']); // for errors with specific key
@@ -705,6 +720,44 @@ Array (
 )
 */
 ```
+
+### Chunks
+
+Optimizers are good in certain cases, but sometimes you want to parse your
+data by chunk, maniuplate it, store it, and do it again with the next chunk.
+You can achieve this with chunks options:
+
+```php
+$str = ''; // a hudge CSV string with tons of rows and two columns
+
+$parser->fromString($str, [
+    'delimiter' => ';',
+    'chunkSize' => 500,
+    'onChunkParsed' => function (array $rows, int $chunkIndex, array $columns, array $options) {
+        // count($rows) = 500
+        // do something with your parsed rows. This method will be called
+        // as long as there are rows to parse.
+
+        // This method returns void
+    },
+    'onError' => function (\Exception $e, $index, array $meta) {
+        // if ($meta['type] === 'chunk') { do something }
+    },
+    'columns' => [
+        'A as name' => function (string $data) {
+            return (int) $data;
+        },
+        'B as firstname' => function (string $data) {
+            return $data;
+        }
+    ]
+]);
+
+```
+> If you use optimizers, `$rows` will be the resultset optimized.
+
+> You don't need to use the array returned by `fromString` (or alike)
+> because what you did in `onChunkParsed` is enough.
 
 ## Known issues
 
