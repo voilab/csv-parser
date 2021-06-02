@@ -187,9 +187,6 @@ class Parser
         if (!$options['enclosure']) {
             $options['enclosure'] = 0x00;
         }
-        if ($options['autoDetectLn'] !== null) {
-            ini_set('auto_detect_line_endings', (bool) $options['autoDetectLn']);
-        }
 
         $columns = $this->getColumns($data, $options);
         // seek directly at the right place
