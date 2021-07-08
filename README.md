@@ -81,7 +81,7 @@ This PHP5 version can't parse streams nor iterables.
 
 ## Usage
 
-### Available methods<a name="available-methods"></a>
+### Available methods <a name="available-methods"></a>
 
 ```php
 $parser = new \voilab\csv\Parser($defaultOptions = []);
@@ -889,7 +889,7 @@ $parser->fromString($str, [
 + with PSR streams, carriage returns are not supported in headers and in cells
 content
 + guessing processes are unlikely to fit your specific needs immediately. Before
-create an issue or a PR, try to extends the guess classes and make your own
+creating an issue or a PR, try to extends the guess classes and make your own
 specific adaptations
 
 ## Testing
