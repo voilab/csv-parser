@@ -72,6 +72,11 @@ class CsvResource implements CsvInterface
         $this->stat = fstat($data);
     }
 
+    public function setMetadata(string $key, $value)
+    {
+        $this->options[$key] = $value;
+    }
+
     /**
      * Returns underlying resource
      *

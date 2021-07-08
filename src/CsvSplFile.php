@@ -49,10 +49,15 @@ class CsvSplFile implements CsvInterface
         $this->stat = $data->fstat();
     }
 
+    public function setMetadata(string $key, $value)
+    {
+        $this->options[$key] = $value;
+    }
+
     /**
      * Returns underlying resource
      *
-     * @return resource
+     * @return \SplFileObject
      */
     public function getResource()
     {

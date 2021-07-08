@@ -11,6 +11,45 @@ in the CSV resource and, then, do something with this array of errors.
 It is extendable, so you can parse your own type of resource/stream, if you
 have very special needs.
 
+## Table of content
+
++ [Install](#install)
+  + [Install PHP5 compatible version](#install-php5)
++ [Usage](#usage)
+  + [Available methods](#available-methods)
+  + [Simple example](#simple-example)
+  + [Full example](#full-example)
++ [Documentation](#documentation)
+  + [Options](#options)
+  + [Column function parameters](#column-function-parameters)
+  + [Headers auto-sanitization](#headers-auto-sanitization)
+  + [On before column parse function parameters](#on-before-column-parse)
+  + [On row parsed function parameters](#on-row-parsed)
+  + [Aliasing columns](#aliasing-columns)
+  + [Required columns](#required-columns)
+  + [No header](#no-header)
+  + [Shuffling columns when defining them](#shuffling-columns)
+  + [Seek in big files](#seek-in-big-files)
+  + [Close the resource](#close-the-resource)
+  + [Line endings problems](#line-endings-problems)
++ [Error management](#error-managment)
+  + [Initialization errors](#initialization-errors)
+  + [Error and internationalization (i18n)](#error-and-internationalization)
++ [Working with database, column optimization](#optimizers)
+  + [Parse function](#parse-function)
+  + [Reduce function](#reduce-function)
+  + [Absent function](#absent-function)
+  + [Example](#optimizer-example)
+  + [Chunks](#chunks)
++ [Guessers : auto detect line ending, delimiter and encoding](#guessers)
+  + [Guess line ending](#guess-line-ending)
+  + [Guess delimiter](#guess-delimiter)
+  + [Guess encoding](#guess-encoding)
++ [Known issues](#known-issues)
++ [Testing](#testing)
++ [Security](#security)
++ [License](#license)
+
 ## Install
 
 Via Composer
@@ -19,7 +58,7 @@ Create a composer.json file in your project root:
 ``` json
 {
     "require": {
-        "voilab/csv": "^4.0.0"
+        "voilab/csv": "^5.0.0"
     }
 }
 ```
@@ -28,7 +67,7 @@ Create a composer.json file in your project root:
 $ composer require voilab/csv
 ```
 
-### Install PHP5 compatible version
+### Install PHP5 compatible version <a name="install-php5"></a>
 
 This PHP5 version can't parse streams nor iterables.
 
@@ -42,7 +81,7 @@ This PHP5 version can't parse streams nor iterables.
 
 ## Usage
 
-### Available methods
+### Available methods<a name="available-methods"></a>
 
 ```php
 $parser = new \voilab\csv\Parser($defaultOptions = []);
@@ -69,7 +108,7 @@ $result = $parser->fromStream($response->getBody(), $options = []);
 $result => $parser->parse($myCsvInterface, $options = []);
 ```
 
-### Simple example
+### Simple example <a name="simple-example"></a>
 
 ```php
 $parser = new \voilab\csv\Parser([
@@ -98,7 +137,7 @@ foreach ($result as $row) {
 }
 ```
 
-### Full example
+### Full example <a name="full-example"></a>
 
 ```php
 $parser->fromFile('file.csv', [
@@ -132,6 +171,9 @@ $parser->fromFile('file.csv', [
     'onBeforeColumnParse' => function (string $data) {
         return utf8_encode($data);
     },
+    'guessDelimiter' => new \voilab\csv\GuesserDelimiter(),
+    'guessLineEnding' => new \voilab\csv\GuesserLineEnding(),
+    'guessEncoding' => new \voilab\csv\GuesserEncoding(),
 
     // data post-manipulation
     'onRowParsed' => function (array $row) {
@@ -187,8 +229,8 @@ https://php.net/fgetcsv and https://php.net/str_getcsv
 | enclosure | `string` | `"` | `fgetcsv` the enclosure string. To tell PHP there isn't enclosure, set to and empty string |
 | escape | `string` | `\\` | `fgetcsv` the escape string |
 | length | `int` | `0` | `fgetcsv` the line length |
-| autoDetectLn | `bool` | `null` | If supplied, set the PHP ini param "auto_detect_line_endings". Doesn't work with PSR streams. |
-| metadata | `array` | `[]` | Resource metadata. Only used with iterables or arrays |
+| autoDetectLn | `bool` | `null` | If supplied, set the PHP ini param `auto_detect_line_endings`. Doesn't work with PSR streams. |
+| metadata | `array` | `[]` | Resource metadata. May be used internally by the resource |
 | close | `bool` | `false` | Tells if resource must be closed after parsing is done |
 | lineEnding | `string` | `\n` | Used with PSR streams to define what is a line ending. You must set a length, so it's possible to read a line |
 | headers | `bool` | `true` | Tells that CSV resource has the first line as headers |
@@ -201,11 +243,14 @@ https://php.net/fgetcsv and https://php.net/str_getcsv
 | chunkSize | `int` | `0` | Number of rows to parse (including optimizer) to create a chunk |
 | onChunkParsed | `callable` | `null` | Method called when a chunk is complete |
 | onBeforeColumnParse | `callable` | `null` | Method called just before any defined column method |
+| guessDelimiter | `GuesserDelimiterInterface` | `null` | Object used to guess delimiter |
+| guessLineEnding | `GuesserLineEndingInterface` | `null` | Object used to guess line ending |
+| guessEncoding | `GuesserEncodingInterface` | `null` | Object used to guess content encoding. Call to this class is done before [onBeforeColumnParse] |
 | onRowParsed | `callable` | `null` | Method called when a row has finished parsing |
 | onError | `callable` | `null` | Method called when an error occurs, at column and at row level |
-| columns | `array` |  | CSV columns definition (see examples). This option is required |
+| columns | `array` |  | CSV columns definition (see examples). This option is the only one required |
 
-### Column function parameters
+### Column function parameters <a name="column-function-parameters"></a>
 
 When defining a function for a column, you have access to these parameters:
 
@@ -231,7 +276,7 @@ $parser->fromFile('file.csv', [
 ]);
 ```
 
-#### Headers auto-sanitization
+#### Headers auto-sanitization <a name="headers-auto-sanitization"></a>
 
 Note that headers are automatically trimmed and their carriage returns are
 removed. Also, all spaces following a space are removed. This is only for the
@@ -249,7 +294,7 @@ header  "        => "a header"
 > `phantom` set to `true`. This is the way to know if the column exists or not
 > in the CSV resource during parsing.
 
-### On before column parse function parameters
+### On before column parse function parameters <a name="on-before-column-parse"></>
 
 Just before any CSV column data is parsed, a standard method is called so you
 can operate the same way on every rows and columns data. You can use that to
@@ -276,7 +321,7 @@ $parser->fromFile('file.csv', [
 ]);
 ```
 
-### On row parsed function parameters
+### On row parsed function parameters <a name="on-row-parsed"></a>
 
 When a row is completed, you can do something with all that data.
 
@@ -298,7 +343,7 @@ $parser->fromFile('file.csv', [
 ]);
 ```
 
-### Aliasing columns
+### Aliasing columns <a name="aliasing-columns"></a>
 
 You can define aliases for columns to ease data manipulation. Just write ` as `
 to activate this functionality, like `CSV column name as alias`.
@@ -351,7 +396,7 @@ Array (
 */
 ```
 
-#### Required columns
+#### Required columns <a name="required-columns"></a>
 
 If you have aliased a column, and it is a required column, you must use the
 alias inside the `required` option.
@@ -370,7 +415,7 @@ $result = $parser->fromString($str, [
 ]);
 ```
 
-### No header
+### No header <a name="no-header"></a>
 
 If you have no header in you CSV resource, you need to define the parser like
 this.
@@ -407,7 +452,7 @@ Array (
 */
 ```
 
-### Shuffling columns when defining them
+### Shuffling columns when defining them <a name="shuffling-columns"></a>
 
 You can define your columns in any order you want. You don't need to provide
 them in the order they appear in the CSV. You just have to match your keys with
@@ -455,7 +500,7 @@ Array (
 */
 ```
 
-### Seek in big files
+### Seek in big files <a name="seek-in-big-files"></a>
 
 You can use the seek mechanism to accelerate parsing big files.
 
@@ -510,13 +555,13 @@ $nextResult = $parser->parse($resource2, [
 ]);
 ```
 
-### Close the resource
+### Close the resource <a name="close-the-resource"></a>
 
 Using `fromString()` and `fromFile()` methods, the resource will be closed
 automatically. With other `from*()` methods, you can close the resource by
 giving the `'close' => true` option.
 
-### Line endings problems
+### Line endings problems <a name="line-endings-problems"></a>
 
 Just as stated in official documentation, if you have problems with recognition
 in line endings, you can use the option below to activate auto detect.
@@ -529,7 +574,7 @@ in line endings, you can use the option below to activate auto detect.
 When parsing streams (like HTTP response message body), line ending must be
 specified in the array options.
 
-### Error management
+## Error management <a name="error-managment"></a>
 
 You can use the `onError` option to collect all errors, so you can give a
 message to the user with all errors in the file you found, in one shot.
@@ -576,7 +621,7 @@ if (count($errors)) {
 }
 ```
 
-### Initialization errors
+### Initialization errors <a name="initialization-errors"></a>
 
 Some errors are thrown before any line is parsed. You have to take this into
 account.
@@ -596,12 +641,12 @@ $data = $parser->fromFile('file.csv', [
 ]);
 ```
 
-### Error and internationalization (i18n)
+### Error and internationalization (i18n) <a name="error-and-internationalization"></a>
 
 If you want to translate error messages, you can use the `onError` function
 with `meta['type'] === 'init'` to throw the translated message.
 
-## Working with database, column optimization
+## Working with database, column optimization <a name="optimizers"></a>
 
 When parsing large set of data, if one column is, for example, a user ID, it's
 a bad idea to call a `find($id)` method for each CSV row iteration. It's better
@@ -618,13 +663,11 @@ the reduce function would be `Array ( a => something, b => something else )`.
 The third argument is a function called when a value is not found in the reduced
 function.
 
-### Documentation
-
-#### Parse function
+### Parse function <a name="parse-function"></a>
 
 Same as Column function (see above)
 
-#### Reduce function
+### Reduce function <a name="reduce-function"></a>
 
 | Name | Type | Description |
 |------|------|-------------|
@@ -643,7 +686,7 @@ Same as Column function (see above)
 > users by id, and user ID 22 doesn't exist, the result should be
 > `Array ( 10 => User(id=10) )`
 
-#### Absent function
+### Absent function <a name="absent-function"></a>
 
 When a value is not found in the reduced result, the default behaviour is to
 set the value (like there wasn't any reduce function for this row). You can
@@ -664,7 +707,7 @@ value.
 > If you have defined an error function, it will be called with a type of
 > `optimizer` (check error management above) if you throw an error from here.
 
-### Example
+### Example <a name="optimizer-example"></a>
 
 ```php
 $str = <<<CSV
@@ -757,10 +800,97 @@ $parser->fromString($str, [
 > You don't need to use the array returned by `fromString` (or alike)
 > because what you did in `onChunkParsed` is enough.
 
-## Known issues
+## Guessers : auto detect line ending, delimiter and encoding <a name="guessers"></a>
+
+Guessing how CSV data is structured (line ending, delimiter or encoding) is
+a very hasardous task, with so many use-cases it's impossible to rule them
+all..
+
+This package still provides a way to guess these elements, but if it
+doesn't fit your needs, you can easily extend or create a new class and
+manage your specific use-case.
+
+If you want to implement guessing your own way, please read the code
+base for each guessing interfaces.
+
+> Guessing is useless with some CsvInteface implementations. For example,
+> iterables are ignored, since data is already arranged in cells and
+> rows. Be sure it's useful for you before you use guessing features.
+
+### Guess line ending <a name="guess-line-ending"></a>
+
+First thing the parser does is to detect which are the line endings. The
+provided implementation tries to detect line endings among `\n`, `\r` and `\r\n`.
+
+```php
+$str = 'A;B\r\n4;Hello\r\n;2;World';
+
+$parser->fromString($str, [
+    'guessLineEnding' => new \voilab\csv\GuesserLineEnding([
+        // maximum line length to read, which will be parsed
+        // defaults to: see below
+        'length' => 1024 * 1024
+    ])
+]);
+```
+
+### Guess delimiter <a name="guess-delimiter"></a>
+
+Then, the parser tries to detect delimiter. In the provided implementation, an
+exception is thrown if delimiter is not found **or if it's too ambiguous**.
+
+```php
+$str = 'A;B\n4;Hello\n;2;World';
+
+$parser->fromString($str, [
+    'guessDelimiter' => new \voilab\csv\GuesserDelimiter([
+        // delimiters to check. Defaults to: see below
+        'delimiters' => [',', ';', ':', "\t", '|', ' '],
+        // number of lines to check. Defaults to: see below
+        'size' => 10,
+        // throws an exception if result is amiguous. Defaults to: see below
+        'throwAmbiguous' => true,
+        // score to reach for a delimiter. Defaults to: see below
+        'scoreLimit' => 50
+    ])
+]);
+```
+
+### Guess encoding <a name="guess-encoding"></a>
+
+For each cell, encoding auto detection is called. The provided implementation
+tries to find the current cell encoding, and encode it to the other one given
+in the constructor.
+
+It is also called for the header row. If you want to encode differently
+between headers and datas, you can check on `$meta['type'] === 'init'` in
+your `encode` function (check code base).
+
+> This guesser is called BEFORE onBeforeColumnParse
+
+```php
+$str = 'A;B\n4;Hellö\n;2;Wörld';
+
+$parser->fromString($str, [
+    'guessEncoding' => new \voilab\csv\GuesserEncoding([
+        // encoding in which data to retrieve. Defaults to: see below
+        'encodingTo' => 'utf-8',
+        // encoding in file. If null, is auto-detected
+        'from' => null,
+        // available encodings. If null, uses mb_list_encodings
+        'encodings' => null,
+        // strict mode for mb_detect_encoding. Defaults to: see below
+        'strict' => false
+    ])
+]);
+```
+## Known issues <a name="known-issues"></a>
 
 + with PSR streams, carriage returns are not supported in headers and in cells
 content
++ guessing processes are unlikely to fit your specific needs immediately. Before
+create an issue or a PR, try to extends the guess classes and make your own
+specific adaptations
 
 ## Testing
 ```

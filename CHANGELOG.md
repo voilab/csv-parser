@@ -1,3 +1,9 @@
+## Release 5.0.0
+
+- added an algorithm to guess line ending and delimiter
+- breaking `CsvInterface` now implements 2 new methods: `getResource` and `setMetadata`
+- docs
+
 ## Release 4.2.1
 
 - small change in chunk parsing, so it can be catched if an exception occurs
