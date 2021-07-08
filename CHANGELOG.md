@@ -2,6 +2,7 @@
 
 - added an algorithm to guess line ending and delimiter
 - breaking `CsvInterface` now implements 2 new methods: `getResource` and `setMetadata`
+- docs
 
 ## Release 4.2.1
 
