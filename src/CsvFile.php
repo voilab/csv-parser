@@ -14,7 +14,7 @@ class CsvFile extends CsvResource
         if (!file_exists($file)) {
             throw new \RuntimeException(sprintf("File [%s] doesn't exist", $file));
         }
-        if ($options['autoDetectLn'] !== null) {
+        if (isset($options['autoDetectLn']) && $options['autoDetectLn'] !== null) {
             // must be set before fopen is called
             ini_set('auto_detect_line_endings', (bool) $options['autoDetectLn']);
         }

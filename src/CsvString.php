@@ -11,7 +11,7 @@ class CsvString extends CsvResource
      */
     public function __construct(string $str, array $options = [])
     {
-        if ($options['autoDetectLn'] !== null) {
+        if (isset($options['autoDetectLn']) && $options['autoDetectLn'] !== null) {
             // must be set before fopen is called
             ini_set('auto_detect_line_endings', (bool) $options['autoDetectLn']);
         }
