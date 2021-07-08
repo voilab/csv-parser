@@ -39,6 +39,9 @@ class Parser
         // data pre-manipulation
         'autotrim' => true,
         'onBeforeColumnParse' => null,
+        'guessDelimiter' => null,
+        'guessLineEnding' => null,
+        'guessEncoding' => null,
         // data post-manipulation
         'onRowParsed' => null,
         'onChunkParsed' => null,
@@ -187,8 +190,16 @@ class Parser
         if (!$options['enclosure']) {
             $options['enclosure'] = 0x00;
         }
-        if ($options['autoDetectLn'] !== null) {
-            ini_set('auto_detect_line_endings', (bool) $options['autoDetectLn']);
+        try {
+            if ($options['guessLineEnding'] instanceof GuesserLineEndingInterface && !is_iterable($data->getResource())) {
+                $options['lineEnding'] = $options['guessLineEnding']->guess($data, $options) ?: $options['lineEnding'];
+            }
+            $data->setMetadata('lineEnding', $options['lineEnding']);
+            if ($options['guessDelimiter'] instanceof GuesserDelimiterInterface && !is_iterable($data->getResource())) {
+                $options['delimiter'] = $options['guesser']->guess($data, $options);
+            }
+        } catch (\Exception $e) {
+            $this->checkError($e, null, [ 'type' => 'init' ], $options);
         }
 
         $columns = $this->getColumns($data, $options);
@@ -302,7 +313,7 @@ class Parser
     /**
      * Explode one row and parse each column, calling method if asked
      *
-     * @param array $row the parsed row witht fgetcsv
+     * @param array $row the parsed row with fgetcsv
      * @param int $index the row index in the CSV resource
      * @param array $columns the parsed columns
      * @param array $options configuration options for parsing
@@ -322,6 +333,9 @@ class Parser
                 $col = isset($row[$i]) && !$meta['phantom'] ? $row[$i] : '';
 
                 $col = $options['autotrim'] ? trim($col) : (string) $col;
+                if ($options['guessEncoding'] instanceof GuesserEncodingInterface) {
+                    $col = $options['guessEncoding']->encode($col, $row, $index, $meta, $options);
+                }
                 if (is_callable($options['onBeforeColumnParse'])) {
                     $col = $options['onBeforeColumnParse']($col, $index, $meta, $options);
                 }
@@ -397,6 +411,12 @@ class Parser
             $this->checkError($e, null, [ 'type' => 'init' ], $options);
         }
         $cols = array_map('trim', $options['headers'] ? $columns : array_keys($columns));
+        if ($options['headers'] && $options['guessEncoding'] instanceof GuesserEncodingInterface) {
+            foreach ($cols as $i => $c) {
+                // index is 1 since first data row has an index of 2
+                $cols[$i] = $options['guessEncoding']->encode($c, $cols, 1, [ 'type' => 'init' ], $options);
+            }
+        }
         $headers = [];
         foreach ($cols as $i => $h) {
             // remove carriage returns and surnumeral spaces
