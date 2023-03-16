@@ -145,7 +145,7 @@ class CsvIterable implements CsvInterface
 
     public function isReadable() : bool
     {
-        return !!$this->resource;
+        return !$this->resource;
     }
 
     public function read($length) : string

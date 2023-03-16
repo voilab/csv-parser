@@ -294,7 +294,7 @@ header  "        => "a header"
 > `phantom` set to `true`. This is the way to know if the column exists or not
 > in the CSV resource during parsing.
 
-### On before column parse function parameters <a name="on-before-column-parse"></>
+### On before column parse function parameters <a name="on-before-column-parse"></a>
 
 Just before any CSV column data is parsed, a standard method is called so you
 can operate the same way on every rows and columns data. You can use that to

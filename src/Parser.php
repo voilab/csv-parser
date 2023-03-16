@@ -5,6 +5,12 @@ use Psr\Http\Message\StreamInterface;
 
 class Parser
 {
+    public const BOM_UTF8 = "\xEF\xBB\xBF";
+    public const BOM_UTF16_BE = "\xFE\xFF";
+    public const BOM_UTF16_LE = "\xFF\xFE";
+    public const BOM_UTF32_BE = "\x00\x00\xFE\xFF";
+    public const BOM_UTF32_LE = "\xFF\xFE\x00\x00";
+
     /**
      * Column alias to be used in columns definitions
      * @var string
@@ -402,6 +408,9 @@ class Parser
     private function getCsvHeaders(CsvInterface $data, array $options) : array
     {
         $data->rewind();
+
+        $this->manageBOM($data);
+
         $columns = $data->getCsv($options['length'], $options['delimiter'], $options['enclosure'], $options['escape']);
         if (!$options['headers']) {
             $data->rewind();
@@ -470,6 +479,38 @@ class Parser
             $options['onError']($e, $index, $meta, $options);
         } else {
             throw $e;
+        }
+    }
+
+    /**
+     * Remove BOM char from file if it exists
+     *
+     * @param CsvInterface $data
+     * @return void
+     */
+    private function manageBOM(CsvInterface $data)
+    {
+        $boms = [
+            self::BOM_UTF8,
+            self::BOM_UTF16_BE,
+            self::BOM_UTF16_LE,
+            self::BOM_UTF32_BE,
+            self::BOM_UTF32_LE
+        ];
+
+        $content = $data->read(8);
+
+        $bomFound = null;
+        foreach ($boms as $bom) {
+            if (strpos($content, $bom) !== false) {
+                $bomFound = $bom;
+                break;
+            }
+        }
+        if ($bomFound) {
+            $data->seek(strlen($bomFound));
+        } else {
+            $data->rewind();
         }
     }
 }

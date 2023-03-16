@@ -1,3 +1,7 @@
+## Release 5.1.0
+
+- added BOM managment when detecting headers
+
 ## Release 5.0.0
 
 - added an algorithm to guess line ending and delimiter
